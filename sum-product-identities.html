@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>สุ่มโจทย์ผลรวม-ผลคูณตรีโกณมิติ</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+  .type-badge {
+    font-size: clamp(12px, 1.6vw, 15px);
+    color: var(--muted);
+    margin-bottom: 6px;
+    z-index: 1;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(24px, 4.6vw, 50px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.4;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: center; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+  .answer-given {
+    font-size: clamp(15px, 2.4vw, 22px);
+    font-weight: 700;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .answer-line {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(26px, 5vw, 54px);
+    font-weight: 700;
+    color: var(--gold);
+    text-align: center;
+    line-height: 1.4;
+    margin-top: 18px;
+  }
+  .answer-sub {
+    margin-top: 8px;
+    font-size: clamp(12px, 1.7vw, 16px);
+    color: var(--muted);
+  }
+  .answer-formula {
+    margin-top: 4px;
+    font-size: clamp(15px, 2.3vw, 21px);
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .answer-formula .frac { margin: 0 0.12em; }
+
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 0.1em;
+    line-height: 1.05;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.05em; }
+  .frac .den { padding-top: 0.05em; }
+
+  .prompt {
+    margin-top: 18px;
+    font-size: clamp(13px, 1.8vw, 18px);
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .controls {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    max-width: 760px;
+    padding: 0 24px clamp(16px, 4vh, 40px);
+    z-index: 1;
+  }
+  button {
+    border: none;
+    border-radius: 20px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-appearance: none;
+    transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next {
+    flex: 2;
+    background: var(--coral);
+    color: var(--ink);
+    font-size: clamp(13px, 2.1vw, 22px);
+    padding: clamp(12px, 2.4vh, 20px) 10px;
+    white-space: nowrap;
+  }
+  .btn-toggle {
+    flex: 2;
+    background: var(--navy-deep);
+    color: var(--gold);
+    border: 2px solid var(--gold);
+    font-size: clamp(13px, 1.9vw, 20px);
+    padding: clamp(12px, 2.4vh, 20px) 16px;
+  }
+  .btn-end {
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    border: 2px solid var(--navy-deep);
+    font-size: clamp(12px, 1.6vw, 18px);
+    padding: clamp(12px, 2.4vh, 20px) 12px;
+  }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .field-group { margin-bottom: 16px; }
+  .field-group .label { font-size: 13px; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .subfield-row {
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .subfield-label { display: block; font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 7px; }
+  .subfield-row input {
+    width: 100%; font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink);
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.12); border-radius: 10px;
+    padding: 9px 10px; box-sizing: border-box; font-variant-numeric: tabular-nums;
+  }
+  .subfield-row input:focus { outline: none; border-color: var(--coral); }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 480px) {
+    .settings-panel { padding: 14px 18px; max-height: 94vh; }
+    .field-group { margin-bottom: 8px; }
+    .settings-panel h2 { font-size: 16px; margin-bottom: 2px; }
+    .settings-panel .desc { font-size: 11px; margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">สุ่มโจทย์ผลรวม &harr; ผลคูณ ตรีโกณมิติ</div>
+  <div class="type-badge" id="typeBadge"></div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="answer-given" id="answerGiven"></div>
+      <div class="answer-formula" id="answerFormula"></div>
+      <div class="answer-sub" id="answerSub"></div>
+      <div class="answer-line" id="answerLine"></div>
+    </div>
+    <div class="prompt" id="promptEl">แปลงรูปให้ถูกต้อง แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกประเภทโจทย์ที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+
+      <div class="field-group">
+        <div class="toggle-row">
+          <span>1. ผลรวม (sinA&plusmn;sinB, cosA&plusmn;cosB) &rarr; ผลคูณ</span>
+          <label class="switch"><input type="checkbox" id="typeSumProd" checked><span class="slider-track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span>2. ผลคูณ (sinAcosB, cosAcosB, ...) &rarr; ผลรวม</span>
+          <label class="switch"><input type="checkbox" id="typeProdSum" checked><span class="slider-track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span>3. asinx+bcosx = Asin(x+&theta;)</span>
+          <label class="switch"><input type="checkbox" id="typeLinComb" checked><span class="slider-track"></span></label>
+        </div>
+        <div class="subfield-row">
+          <span class="subfield-label">ค่าสัมบูรณ์สูงสุดของสัมประสิทธิ์ a, b (แบบที่ 3)</span>
+          <input type="number" id="linCombMax" min="1" step="1">
+        </div>
+      </div>
+
+      <div class="settings-error" id="settingsError"></div>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const DEFAULT_CFG = { typeSumProd: true, typeProdSum: true, typeLinComb: true, linCombMax: 30 };
+  const STORAGE_KEY = "sumprod-quiz-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function fracHTML(num, den) { return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`; }
+
+  // ---- Type 1: sum-to-product ----
+  function genSumProd() {
+    let x, y;
+    do {
+      x = randInt(10, 170);
+      y = randInt(10, 170);
+    } while (x === y || (x + y) % 2 !== 0);
+    if (x < y) [x, y] = [y, x];
+    const A = (x + y) / 2, B = (x - y) / 2;
+    const variant = choice(["sp", "sm", "cp", "cm"]); // sin+, sin-, cos+, cos-
+    let problem, answer, formula, sub;
+    const given = `x=${x}\u00b0, y=${y}\u00b0`;
+    if (variant === "sp") {
+      problem = `sin${x}\u00b0 + sin${y}\u00b0`;
+      answer = `2 sin${A}\u00b0 cos${B}\u00b0`;
+      formula = `sin x + sin y = 2 sinA cosB`;
+    } else if (variant === "sm") {
+      problem = `sin${x}\u00b0 \u2212 sin${y}\u00b0`;
+      answer = `2 cos${A}\u00b0 sin${B}\u00b0`;
+      formula = `sin x \u2212 sin y = 2 cosA sinB`;
+    } else if (variant === "cp") {
+      problem = `cos${x}\u00b0 + cos${y}\u00b0`;
+      answer = `2 cos${A}\u00b0 cos${B}\u00b0`;
+      formula = `cos x + cos y = 2 cosA cosB`;
+    } else {
+      problem = `cos${x}\u00b0 \u2212 cos${y}\u00b0`;
+      answer = `\u22122 sin${A}\u00b0 sin${B}\u00b0`;
+      formula = `cos x \u2212 cos y = \u22122 sinA sinB`;
+    }
+    sub = `A+B=x, A\u2212B=y  \u2192  A=${A}\u00b0, B=${B}\u00b0`;
+    return { type: "sumprod", problem, answer, formula, sub, given };
+  }
+
+  // ---- Type 2: product-to-sum ----
+  function genProdSum() {
+    let A = randInt(10, 170), B = randInt(10, 170);
+    if (A < B) [A, B] = [B, A];
+    const x = A + B, y = A - B;
+    const variant = choice(["sc", "cs", "cc", "ss"]);
+    let problem, answer, formula, sub;
+    const given = `A=${A}\u00b0, B=${B}\u00b0`;
+    if (variant === "sc") {
+      problem = `sin${A}\u00b0 \u00d7 cos${B}\u00b0`;
+      answer = fracHTML("1", "2") + `(sin${x}\u00b0 + sin${y}\u00b0)`;
+      formula = `sinA cosB = ` + fracHTML("1", "2") + `(sin x + sin y)`;
+    } else if (variant === "cs") {
+      problem = `cos${A}\u00b0 \u00d7 sin${B}\u00b0`;
+      answer = fracHTML("1", "2") + `(sin${x}\u00b0 \u2212 sin${y}\u00b0)`;
+      formula = `cosA sinB = ` + fracHTML("1", "2") + `(sin x \u2212 sin y)`;
+    } else if (variant === "cc") {
+      problem = `cos${A}\u00b0 \u00d7 cos${B}\u00b0`;
+      answer = fracHTML("1", "2") + `(cos${y}\u00b0 + cos${x}\u00b0)`;
+      formula = `cosA cosB = ` + fracHTML("1", "2") + `(cos y + cos x)`;
+    } else {
+      problem = `sin${A}\u00b0 \u00d7 sin${B}\u00b0`;
+      answer = fracHTML("1", "2") + `(cos${y}\u00b0 \u2212 cos${x}\u00b0)`;
+      formula = `sinA sinB = ` + fracHTML("1", "2") + `(cos y \u2212 cos x)`;
+    }
+    sub = `x=A+B=${x}\u00b0, y=A\u2212B=${y}\u00b0`;
+    return { type: "prodsum", problem, answer, formula, sub, given };
+  }
+
+  // ---- Type 3: linear combination a sinx + b cosx = A sin(x+theta) ----
+  function fmtCoeffTerm(coef, varName, isFirst) {
+    const sign = coef < 0 ? "\u2212" : isFirst ? "" : "+";
+    const abs = Math.abs(coef);
+    const numStr = abs === 1 ? "" : `${abs}`;
+    return isFirst ? `${sign}${numStr}${varName}` : ` ${sign} ${numStr}${varName}`;
+  }
+  function genLinComb() {
+    const max = cfg.linCombMax || 30;
+    const a = choice([-1, 1]) * randInt(1, max);
+    const b = choice([-1, 1]) * randInt(1, max);
+    const Asq = a * a + b * b;
+    const Aexact = Math.sqrt(Asq);
+    const isPerfectSquare = Number.isInteger(Aexact);
+    const Astr = isPerfectSquare ? `${Aexact}` : `\u221a${Asq}`;
+    const acosVal = (Math.acos(a / Aexact) * 180) / Math.PI;
+    const sign = b > 0 ? 1 : -1;
+    const thetaDeg = sign * acosVal;
+    const problem = fmtCoeffTerm(a, "sinx", true) + fmtCoeffTerm(b, "cosx", false);
+    const answer = `${Astr} sin(x + \u03b8)`;
+    const thetaFormula = `\u03b8 = ${sign < 0 ? "\u2212" : ""}arccos(${a}/${Astr})  (เครื่องหมายตามเครื่องหมายของ b=${b})`;
+    const sub = `A=\u221a(${a}\u00b2+${b}\u00b2)=${Astr}${isPerfectSquare ? "" : ` \u2248 ${Aexact.toFixed(2)}`}     ${thetaFormula} \u2248 ${thetaDeg.toFixed(2)}\u00b0`;
+    return { type: "lincomb", problem, answer, sub };
+  }
+
+  const TYPE_LABELS = { sumprod: "แบบที่ 1: ผลรวม \u2192 ผลคูณ", prodsum: "แบบที่ 2: ผลคูณ \u2192 ผลรวม", lincomb: "แบบที่ 3: a sinx+b cosx \u2192 A sin(x+\u03b8)" };
+
+  function generateProblem() {
+    const pool = [];
+    if (cfg.typeSumProd) pool.push(genSumProd);
+    if (cfg.typeProdSum) pool.push(genProdSum);
+    if (cfg.typeLinComb) pool.push(genLinComb);
+    if (pool.length === 0) return { type: "none", problem: "กรุณาเปิดประเภทโจทย์อย่างน้อย 1 แบบในตั้งค่า", answer: "", sub: "" };
+    return choice(pool)();
+  }
+
+  let current = null;
+  let showingAnswer = false;
+
+  const typeBadge = document.getElementById("typeBadge");
+  const exprEl = document.getElementById("exprEl");
+  const answerWrap = document.getElementById("answerWrap");
+  const answerGiven = document.getElementById("answerGiven");
+  const answerLine = document.getElementById("answerLine");
+  const answerFormula = document.getElementById("answerFormula");
+  const answerSub = document.getElementById("answerSub");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "แปลงรูปให้ถูกต้อง แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    answerWrap.style.display = "";
+    answerGiven.textContent = current.given ? `\u0e01\u0e33\u0e2b\u0e19\u0e14 ${current.given}` : "";
+    answerGiven.style.display = current.given ? "" : "none";
+    answerLine.innerHTML = current.answer;
+    answerFormula.innerHTML = current.formula || "";
+    answerFormula.style.display = current.formula ? "" : "none";
+    answerSub.textContent = current.sub;
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+
+  function showNext() {
+    exprEl.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      typeBadge.textContent = TYPE_LABELS[current.type] || "";
+      exprEl.textContent = current.problem;
+      showingAnswer = false;
+      displayProblem();
+      exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  function toggleAnswer() {
+    const el = showingAnswer ? answerWrap : exprEl;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? answerWrap : exprEl).classList.remove("swap");
+    }, 150);
+  }
+  nextBtn.addEventListener("click", showNext);
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showNext(); });
+
+  // --- settings ---
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const fieldIds = ["typeSumProd", "typeProdSum", "typeLinComb"];
+
+  function openSettings() {
+    fieldIds.forEach((id) => (document.getElementById(id).checked = cfg[id]));
+    document.getElementById("linCombMax").value = cfg.linCombMax;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+
+  saveBtn.addEventListener("click", () => {
+    const vals = {};
+    fieldIds.forEach((id) => { vals[id] = document.getElementById(id).checked; });
+    if (!vals.typeSumProd && !vals.typeProdSum && !vals.typeLinComb) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 ประเภท";
+      return;
+    }
+    const maxVal = parseInt(document.getElementById("linCombMax").value, 10);
+    if (!Number.isInteger(maxVal) || maxVal < 1) {
+      settingsError.textContent = "ค่าสัมประสิทธิ์สูงสุด (แบบที่ 3) ต้องเป็นจำนวนเต็มอย่างน้อย 1";
+      return;
+    }
+    vals.linCombMax = maxVal;
+    cfg = { ...cfg, ...vals };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showNext();
+  });
+
+  // first problem on load
+  showNext();
+</script>
+
+</body>
+</html>

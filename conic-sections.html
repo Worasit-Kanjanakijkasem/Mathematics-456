@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>สุ่มโจทย์ภาคตัดกรวย</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(20px, 3.8vw, 38px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(80vw, 380px); margin: 0 auto 16px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(249,231,149,0.4);
+    border-radius: 16px;
+    padding: 18px 22px;
+  }
+  .answer-row { margin-bottom: 10px; font-size: clamp(13px, 2vw, 16px); line-height: 1.5; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .answer-row .std-eq { font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 19px); color: var(--ink); }
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 0.1em;
+    line-height: 1.05;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.04em; }
+  .frac .den { padding-top: 0.04em; }
+
+  .prompt {
+    margin-top: 18px;
+    font-size: clamp(14px, 2vw, 20px);
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .controls {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px);
+    z-index: 1;
+    flex-shrink: 0;
+  }
+  button {
+    border: none;
+    border-radius: 20px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-appearance: none;
+    transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next {
+    flex: 2;
+    background: var(--coral);
+    color: var(--ink);
+    font-size: clamp(13px, 2.1vw, 22px);
+    padding: clamp(12px, 2.4vh, 20px) 10px;
+    white-space: nowrap;
+  }
+  .btn-toggle {
+    flex: 2;
+    background: var(--navy-deep);
+    color: var(--gold);
+    border: 2px solid var(--gold);
+    font-size: clamp(13px, 1.9vw, 20px);
+    padding: clamp(12px, 2.4vh, 20px) 16px;
+  }
+  .btn-end {
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    border: 2px solid var(--navy-deep);
+    font-size: clamp(12px, 1.6vw, 18px);
+    padding: clamp(12px, 2.4vh, 20px) 12px;
+  }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .field-group { margin-bottom: 16px; }
+  .field-group .label { font-size: 13px; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
+  .field-row { display: flex; gap: 10px; align-items: center; }
+  .field-row .mini-label { font-size: 12px; color: var(--muted); width: 46px; flex-shrink: 0; }
+  .field-row input {
+    flex: 1; font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink);
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.12); border-radius: 10px;
+    padding: 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; width: 100%; min-width: 0;
+  }
+  .field-row input:focus { outline: none; border-color: var(--coral); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 480px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .field-group { margin-bottom: 8px; }
+    .settings-panel h2 { font-size: 17px; margin-bottom: 2px; }
+    .settings-panel .desc { font-size: 11.5px; margin-bottom: 10px; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(64vw, 280px); margin-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">สุ่มโจทย์ภาคตัดกรวย</div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">บอกชนิด จัดเป็นรูปแบบมาตรฐาน แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">กำหนดช่วงพิกัดจุดสำคัญ และช่วงพารามิเตอร์แต่ละรูปทรง</div>
+
+      <div class="field-group">
+        <div class="label">พิกัดจุดศูนย์กลาง/จุดยอด (h, k)</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="coordMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="coordMax">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="label">รัศมีวงกลม (r)</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="rMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="rMax">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="label">ระยะโฟกัสพาราโบลา |c|</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="cMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="cMax">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="label">a ของวงรี/ไฮเพอร์โบลา (ครึ่งแกนยาว)</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="aMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="aMax">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="label">b ของไฮเพอร์โบลา (ครึ่งแกนสังยุค)</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="bMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="bMax">
+        </div>
+      </div>
+
+      <div class="settings-error" id="settingsError"></div>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const DEFAULT_CFG = {
+    coordMin: -20, coordMax: 20,
+    rMin: 1, rMax: 15,
+    cMin: 1, cMax: 8,
+    aMin: 4, aMax: 15,
+    bMin: 1, bMax: 10,
+  };
+  const STORAGE_KEY = "conic-quiz-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+
+  // ---- generate a random conic problem; returns general-form coeffs + type info ----
+  function generateProblem() {
+    const type = choice(["circle", "parabola", "ellipse", "hyperbola"]);
+    const h = randInt(cfg.coordMin, cfg.coordMax);
+    const k = randInt(cfg.coordMin, cfg.coordMax);
+    let A, B, C, D, E, params;
+
+    if (type === "circle") {
+      const r = randInt(cfg.rMin, cfg.rMax);
+      A = 1; B = 1; C = -2 * h; D = -2 * k; E = h * h + k * k - r * r;
+      params = { h, k, r };
+    } else if (type === "parabola") {
+      const axis = choice(["x", "y"]);
+      const c = choice([-1, 1]) * randInt(cfg.cMin, cfg.cMax);
+      if (axis === "x") {
+        A = 0; B = 1; C = -4 * c; D = -2 * k; E = k * k + 4 * h * c;
+      } else {
+        A = 1; B = 0; C = -2 * h; D = -4 * c; E = h * h + 4 * k * c;
+      }
+      params = { h, k, c, axis };
+    } else if (type === "ellipse") {
+      const axis = choice(["x", "y"]);
+      const aa = randInt(cfg.aMin, cfg.aMax);
+      const bb = randInt(cfg.bMin, Math.min(cfg.bMax, aa - 1));
+      if (axis === "x") {
+        A = bb * bb; B = aa * aa; C = -2 * bb * bb * h; D = -2 * aa * aa * k;
+        E = bb * bb * h * h + aa * aa * k * k - aa * aa * bb * bb;
+      } else {
+        A = aa * aa; B = bb * bb; C = -2 * aa * aa * h; D = -2 * bb * bb * k;
+        E = aa * aa * h * h + bb * bb * k * k - aa * aa * bb * bb;
+      }
+      params = { h, k, a: aa, b: bb, axis };
+    } else {
+      const axis = choice(["x", "y"]);
+      const aa = randInt(cfg.aMin, cfg.aMax);
+      const bb = randInt(cfg.bMin, cfg.bMax);
+      if (axis === "x") {
+        A = bb * bb; B = -aa * aa; C = -2 * bb * bb * h; D = 2 * aa * aa * k;
+        E = bb * bb * h * h - aa * aa * k * k - aa * aa * bb * bb;
+      } else {
+        A = -aa * aa; B = bb * bb; C = 2 * aa * aa * h; D = -2 * bb * bb * k;
+        E = -aa * aa * h * h + bb * bb * k * k - aa * aa * bb * bb;
+      }
+      params = { h, k, a: aa, b: bb, axis };
+    }
+    return { type, A, B, C, D, E, params };
+  }
+
+  // ---- format the general-form equation ----
+  function fmtTerm(coeff, varStr, isFirst) {
+    if (coeff === 0) return "";
+    const sign = coeff < 0 ? "\u2212" : (isFirst ? "" : "+");
+    const abs = Math.abs(coeff);
+    const coeffStr = (abs === 1 && varStr !== "") ? "" : abs;
+    return isFirst ? `${sign}${coeffStr}${varStr}` : ` ${sign} ${coeffStr}${varStr}`;
+  }
+  function fmtGeneral(A, B, C, D, E) {
+    const terms = [[A, "x\u00b2"], [B, "y\u00b2"], [C, "x"], [D, "y"], [E, ""]];
+    let out = "";
+    let first = true;
+    for (const [coeff, v] of terms) {
+      if (coeff === 0) continue;
+      out += fmtTerm(coeff, v, first);
+      first = false;
+    }
+    return out + " = 0";
+  }
+
+  function signedNum(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `+${n}`; }
+  function fmtNum(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function coordStr(h, k) { return `(${fmtNum(h)}, ${fmtNum(k)})`; }
+  function fracHTML(num, den) {
+    return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`;
+  }
+
+  /* =========================================================
+     GRAPH RENDERING
+     One shared coordinate system per problem (x,y scaled equally,
+     since circles must look round and asymptote angles must be
+     true), always including the origin so the axis intersection
+     locates it, plus every key point/line the shape calls for.
+     ========================================================= */
+  const NAVY_AXIS = "#7A8296", CURVE = "#FFFFFF", CORAL = "#F96167", GOLD = "#F9E795", DASH = "#B9C0E0";
+
+  function computeConicViewport(prob) {
+    const { type, params } = prob;
+    const h = params.h, k = params.k;
+    let xs = [h, 0], ys = [k, 0];
+
+    if (type === "circle") {
+      const r = params.r;
+      xs.push(h - r, h + r); ys.push(k - r, k + r);
+    } else if (type === "parabola") {
+      const c = params.c;
+      const reach = Math.abs(c) * 2.4;
+      const spread = Math.sqrt(Math.abs(4 * c * reach)) || Math.abs(c) * 2;
+      if (params.axis === "x") {
+        xs.push(h, h + (c > 0 ? reach : -reach));
+        ys.push(k - spread, k + spread);
+      } else {
+        ys.push(k, k + (c > 0 ? reach : -reach));
+        xs.push(h - spread, h + spread);
+      }
+    } else if (type === "ellipse") {
+      const { a, b, axis } = params;
+      if (axis === "x") { xs.push(h - a, h + a); ys.push(k - b, k + b); }
+      else { xs.push(h - b, h + b); ys.push(k - a, k + a); }
+    } else { // hyperbola
+      const { a, b, axis } = params;
+      const c = Math.sqrt(a * a + b * b);
+      if (axis === "x") { xs.push(h - c * 1.15, h + c * 1.15); ys.push(k - b, k + b); }
+      else { xs.push(h - b, h + b); ys.push(k - c * 1.15, k + c * 1.15); }
+    }
+
+    let xLo = Math.min(...xs), xHi = Math.max(...xs);
+    let yLo = Math.min(...ys), yHi = Math.max(...ys);
+    let spanX = xHi - xLo, spanY = yHi - yLo;
+    if (spanX < 2) { const m = (xLo + xHi) / 2; xLo = m - 1; xHi = m + 1; spanX = 2; }
+    if (spanY < 2) { const m = (yLo + yHi) / 2; yLo = m - 1; yHi = m + 1; spanY = 2; }
+    xLo -= spanX * 0.2; xHi += spanX * 0.2;
+    yLo -= spanY * 0.2; yHi += spanY * 0.2;
+
+    // force equal aspect ratio (critical: circle must render round, asymptote angles must be true)
+    const cx = (xLo + xHi) / 2, cy = (yLo + yHi) / 2;
+    const targetSpan = Math.max(xHi - xLo, yHi - yLo);
+    xLo = cx - targetSpan / 2; xHi = cx + targetSpan / 2;
+    yLo = cy - targetSpan / 2; yHi = cy + targetSpan / 2;
+    return { xLo, xHi, yLo, yHi };
+  }
+
+  function svgLine(x1, y1, x2, y2, color, w, dash) {
+    const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="${w}"${dashAttr}/>`;
+  }
+  function svgDot(x, y, r, color) {
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}" stroke="#232D63" stroke-width="1"/>`;
+  }
+  function svgLabel(x, y, text, color, size, anchor) {
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${size}" fill="${color}" font-weight="700" text-anchor="${anchor || "middle"}" font-family="Calibri, sans-serif">${text}</text>`;
+  }
+
+  function buildConicGraph(prob) {
+    const { type, params } = prob;
+    const h = params.h, k = params.k;
+    const { xLo, xHi, yLo, yHi } = computeConicViewport(prob);
+    const W = 320, H = 320, pad = 6;
+    const scale = (W - 2 * pad) / (xHi - xLo);
+    const toPx = (x) => pad + (x - xLo) * scale;
+    const toPy = (y) => H - pad - (y - yLo) * scale;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+    // axes (always drawn; their crossing shows the origin, no dot needed there)
+    svg += svgLine(toPx(xLo), toPy(0), toPx(xHi), toPy(0), NAVY_AXIS, 1.3);
+    svg += svgLine(toPx(0), toPy(yHi), toPx(0), toPy(yLo), NAVY_AXIS, 1.3);
+
+    if (type === "circle") {
+      const r = params.r;
+      const steps = 72;
+      let d = "";
+      for (let i = 0; i <= steps; i++) {
+        const t = (2 * Math.PI * i) / steps;
+        const px = toPx(h + r * Math.cos(t)), py = toPy(k + r * Math.sin(t));
+        d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+      }
+      svg += `<path d="${d}" fill="none" stroke="${CURVE}" stroke-width="2.5"/>`;
+      svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
+      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
+
+    } else if (type === "parabola") {
+      const c = params.c;
+      const steps = 60;
+      let d = "";
+      if (params.axis === "x") {
+        const tMax = Math.sqrt(Math.abs((xHi - xLo)) * Math.abs(4 * c)) * 1.2 || Math.abs(c) * 4;
+        for (let i = 0; i <= steps; i++) {
+          const t = -tMax + (2 * tMax * i) / steps; // t = y-k
+          const xv = h + (t * t) / (4 * c);
+          const px = toPx(xv), py = toPy(k + t);
+          d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+        }
+      } else {
+        const tMax = Math.sqrt(Math.abs((yHi - yLo)) * Math.abs(4 * c)) * 1.2 || Math.abs(c) * 4;
+        for (let i = 0; i <= steps; i++) {
+          const t = -tMax + (2 * tMax * i) / steps; // t = x-h
+          const yv = k + (t * t) / (4 * c);
+          const px = toPx(h + t), py = toPy(yv);
+          d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+        }
+      }
+      svg += `<path d="${d}" fill="none" stroke="${CURVE}" stroke-width="2.5"/>`;
+      const focusX = params.axis === "x" ? h + c : h;
+      const focusY = params.axis === "x" ? k : k + c;
+      svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
+      svg += svgLabel(toPx(h), toPy(k) + (params.axis === "x" ? 16 : (c > 0 ? 16 : -10)), "\u0e08\u0e38\u0e14\u0e22\u0e2d\u0e14", GOLD, 11);
+      svg += svgDot(toPx(focusX), toPy(focusY), 4, CORAL);
+      svg += svgLabel(toPx(focusX), toPy(focusY) + (params.axis === "x" ? -10 : (c > 0 ? -10 : 16)), "\u0e42\u0e1f\u0e01\u0e31\u0e2a", CORAL, 11);
+
+    } else if (type === "ellipse") {
+      const { a, b, axis } = params;
+      const c = Math.sqrt(a * a - b * b);
+      const steps = 72;
+      let d = "";
+      for (let i = 0; i <= steps; i++) {
+        const t = (2 * Math.PI * i) / steps;
+        let xv, yv;
+        if (axis === "x") { xv = h + a * Math.cos(t); yv = k + b * Math.sin(t); }
+        else { xv = h + b * Math.cos(t); yv = k + a * Math.sin(t); }
+        const px = toPx(xv), py = toPy(yv);
+        d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+      }
+      svg += `<path d="${d}" fill="none" stroke="${CURVE}" stroke-width="2.5"/>`;
+      // major / minor axes as dashed segments
+      if (axis === "x") {
+        svg += svgLine(toPx(h - a), toPy(k), toPx(h + a), toPy(k), DASH, 1.3, "4 3");
+        svg += svgLine(toPx(h), toPy(k - b), toPx(h), toPy(k + b), DASH, 1.3, "4 3");
+        svg += svgDot(toPx(h - c), toPy(k), 4, CORAL); svg += svgDot(toPx(h + c), toPy(k), 4, CORAL);
+        svg += svgLabel(toPx(h - c), toPy(k) - 9, "F\u2081", CORAL, 11);
+        svg += svgLabel(toPx(h + c), toPy(k) - 9, "F\u2082", CORAL, 11);
+      } else {
+        svg += svgLine(toPx(h), toPy(k - a), toPx(h), toPy(k + a), DASH, 1.3, "4 3");
+        svg += svgLine(toPx(h - b), toPy(k), toPx(h + b), toPy(k), DASH, 1.3, "4 3");
+        svg += svgDot(toPx(h), toPy(k - c), 4, CORAL); svg += svgDot(toPx(h), toPy(k + c), 4, CORAL);
+        svg += svgLabel(toPx(h) + 14, toPy(k - c), "F\u2081", CORAL, 11);
+        svg += svgLabel(toPx(h) + 14, toPy(k + c), "F\u2082", CORAL, 11);
+      }
+      svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
+      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
+
+    } else { // hyperbola
+      const { a, b, axis } = params;
+      const c = Math.sqrt(a * a + b * b);
+      const steps = 44;
+      // two branches
+      for (const sgn of [1, -1]) {
+        let d = "";
+        const tMax = 1.6;
+        for (let i = 0; i <= steps; i++) {
+          const t = -tMax + (2 * tMax * i) / steps;
+          let xv, yv;
+          if (axis === "x") { xv = h + sgn * a * Math.cosh(t); yv = k + b * Math.sinh(t); }
+          else { yv = k + sgn * a * Math.cosh(t); xv = h + b * Math.sinh(t); }
+          const px = toPx(xv), py = toPy(yv);
+          d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+        }
+        svg += `<path d="${d}" fill="none" stroke="${CURVE}" stroke-width="2.5"/>`;
+      }
+      // auxiliary box touching the vertices + asymptotes through its diagonals
+      const boxHalfW = axis === "x" ? a : b;
+      const boxHalfH = axis === "x" ? b : a;
+      const bx1 = toPx(h - boxHalfW), bx2 = toPx(h + boxHalfW);
+      const by1 = toPy(k - boxHalfH), by2 = toPy(k + boxHalfH);
+      svg += `<rect x="${Math.min(bx1,bx2).toFixed(1)}" y="${Math.min(by1,by2).toFixed(1)}" width="${Math.abs(bx2-bx1).toFixed(1)}" height="${Math.abs(by2-by1).toFixed(1)}" fill="none" stroke="${DASH}" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+      svg += svgLine(bx1, by1, bx2, by2, DASH, 1.2, "4 3");
+      svg += svgLine(bx1, by2, bx2, by1, DASH, 1.2, "4 3");
+      const fx = axis === "x" ? h - c : h, fy = axis === "x" ? k : k - c;
+      const fx2 = axis === "x" ? h + c : h, fy2 = axis === "x" ? k : k + c;
+      svg += svgDot(toPx(fx), toPy(fy), 4, CORAL); svg += svgDot(toPx(fx2), toPy(fy2), 4, CORAL);
+      svg += svgLabel(toPx(fx) + (axis === "x" ? 0 : 14), toPy(fy) + (axis === "x" ? -10 : 4), "F\u2081", CORAL, 11);
+      svg += svgLabel(toPx(fx2) + (axis === "x" ? 0 : 14), toPy(fy2) + (axis === "x" ? -10 : 4), "F\u2082", CORAL, 11);
+      svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
+      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
+    }
+
+    svg += "</svg>";
+    return svg;
+  }
+
+  // ---- build the answer explanation ----
+  function buildAnswer(prob) {
+    const { type, params } = prob;
+    const h = params.h, k = params.k;
+    let typeName, stdEq, posLabel, posVal, extraRows = [];
+
+    if (type === "circle") {
+      typeName = "วงกลม (Circle)";
+      stdEq = `(x${signedNum(-h)})\u00b2 + (y${signedNum(-k)})\u00b2 = ${params.r}\u00b2`;
+      posLabel = "จุดศูนย์กลาง";
+      posVal = coordStr(h, k);
+      extraRows.push(`รัศมี r = ${params.r}`);
+    } else if (type === "parabola") {
+      typeName = "พาราโบลา (Parabola)";
+      if (params.axis === "x") {
+        stdEq = `(y${signedNum(-k)})\u00b2 = ${signedNum(4 * params.c).replace("+", "")}(x${signedNum(-h)})`;
+      } else {
+        stdEq = `(x${signedNum(-h)})\u00b2 = ${signedNum(4 * params.c).replace("+", "")}(y${signedNum(-k)})`;
+      }
+      posLabel = "จุดยอด";
+      posVal = coordStr(h, k);
+      extraRows.push(`c = ${params.c} (ระยะโฟกัสจากจุดยอด)`);
+      extraRows.push(`แกนสมมาตรขนานแกน ${params.axis} (เปิดไปทาง${params.c > 0 ? (params.axis === "x" ? "ขวา" : "บน") : (params.axis === "x" ? "ซ้าย" : "ล่าง")})`);
+    } else if (type === "ellipse") {
+      typeName = "วงรี (Ellipse)";
+      if (params.axis === "x") {
+        stdEq = `${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.a}\u00b2`)} + ${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.b}\u00b2`)} = 1`;
+      } else {
+        stdEq = `${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.b}\u00b2`)} + ${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.a}\u00b2`)} = 1`;
+      }
+      posLabel = "จุดศูนย์กลาง";
+      posVal = coordStr(h, k);
+      extraRows.push(`a = ${params.a} (ครึ่งแกนเอก)     b = ${params.b} (ครึ่งแกนโท)`);
+      extraRows.push(`แกนเอกขนานแกน ${params.axis}`);
+    } else {
+      typeName = "ไฮเพอร์โบลา (Hyperbola)";
+      if (params.axis === "x") {
+        stdEq = `${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.a}\u00b2`)} \u2212 ${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.b}\u00b2`)} = 1`;
+      } else {
+        stdEq = `${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.a}\u00b2`)} \u2212 ${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.b}\u00b2`)} = 1`;
+      }
+      posLabel = "จุดศูนย์กลาง";
+      posVal = coordStr(h, k);
+      extraRows.push(`a = ${params.a}, b = ${params.b}`);
+      extraRows.push(`แกนตามขวางขนานแกน ${params.axis}     เส้นกำกับ: y = \u00b1(${params.axis === "x" ? `${params.b}/${params.a}` : `${params.a}/${params.b}`})x (สัมพัทธ์กับศูนย์กลาง)`);
+    }
+
+    let html = `<div class="answer-row"><b>ชนิด:</b> ${typeName}</div>`;
+    html += `<div class="answer-row"><b>รูปแบบมาตรฐาน:</b><br><span class="std-eq">${stdEq}</span></div>`;
+    html += `<div class="answer-row"><b>${posLabel}:</b> ${posVal}</div>`;
+    extraRows.forEach((r) => { html += `<div class="answer-row">${r}</div>`; });
+    return html;
+  }
+
+  let current = null;
+  let showingAnswer = false;
+
+  const exprEl = document.getElementById("exprEl");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "บอกชนิด จัดเป็นรูปแบบมาตรฐาน แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    answerWrap.style.display = "";
+    graphBox.innerHTML = buildConicGraph(current);
+    answerCard.innerHTML = buildAnswer(current);
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+
+  function showNext() {
+    exprEl.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      exprEl.textContent = fmtGeneral(current.A, current.B, current.C, current.D, current.E);
+      showingAnswer = false;
+      displayProblem();
+      exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  function toggleAnswer() {
+    const el = showingAnswer ? answerWrap : exprEl;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? answerWrap : exprEl).classList.remove("swap");
+    }, 150);
+  }
+  nextBtn.addEventListener("click", showNext);
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showNext(); });
+
+  // --- settings ---
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const fieldIds = ["coordMin", "coordMax", "rMin", "rMax", "cMin", "cMax", "aMin", "aMax", "bMin", "bMax"];
+
+  function openSettings() {
+    fieldIds.forEach((id) => (document.getElementById(id).value = cfg[id]));
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+
+  saveBtn.addEventListener("click", () => {
+    const vals = {};
+    for (const id of fieldIds) {
+      const v = parseInt(document.getElementById(id).value, 10);
+      if (!Number.isInteger(v)) { settingsError.textContent = "กรอกตัวเลขให้ครบทุกช่อง"; return; }
+      vals[id] = v;
+    }
+    if (vals.coordMin >= vals.coordMax) { settingsError.textContent = "ช่วงพิกัด: ต่ำสุดต้องน้อยกว่าสูงสุด"; return; }
+    if (vals.rMin < 1 || vals.rMin > vals.rMax) { settingsError.textContent = "รัศมี: ช่วงไม่ถูกต้อง (ต่ำสุดอย่างน้อย 1)"; return; }
+    if (vals.cMin < 1 || vals.cMin > vals.cMax) { settingsError.textContent = "ระยะโฟกัส: ช่วงไม่ถูกต้อง (ต่ำสุดอย่างน้อย 1)"; return; }
+    if (vals.aMin < 2 || vals.aMin > vals.aMax) { settingsError.textContent = "a: ช่วงไม่ถูกต้อง (ต่ำสุดอย่างน้อย 2)"; return; }
+    if (vals.bMin < 1 || vals.bMin > vals.bMax) { settingsError.textContent = "b: ช่วงไม่ถูกต้อง (ต่ำสุดอย่างน้อย 1)"; return; }
+
+    cfg = { ...cfg, ...vals };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showNext();
+  });
+
+  // first problem on load
+  showNext();
+</script>
+
+</body>
+</html>
