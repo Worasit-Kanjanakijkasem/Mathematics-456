@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Mathematics-123 Exercises</title>
+
+<style>
+
+/* ===== พื้นฐานทั้งหน้า ===== */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #eef5ff;
+    margin: 0;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+
+/* ===== กล่องหลัก ===== */
+
+.container {
+    width: min(94%, 800px);
+    margin: 0 auto;
+}
+
+
+/* ===== หัวข้อ ===== */
+
+h1 {
+    text-align: center;
+    color: #222222;
+
+    font-size: clamp(24px, 3vw, 34px);
+
+    /* ไม่ให้หัวข้อตัดเป็น 2 บรรทัด */
+    white-space: nowrap;
+
+    /* ให้หัวข้อขยายซ้าย-ขวาจากกึ่งกลางของกล่อง */
+    width: 180%;
+    margin-left: -40%;
+    
+    margin-top: 20px;
+    margin-bottom: 28px;
+}
+
+
+/* ===== Grid สำหรับรายการแบบฝึก ===== */
+
+.exercise-grid {
+    display: grid;
+
+    /* 2 คอลัมน์ ขนาดเท่ากัน */
+    /* grid-template-columns: repeat(2, 1fr); */
+
+    /* ใช้ 1 คอลัมน์ */
+    grid-template-columns: 1fr;
+
+    /* ระยะห่างระหว่างปุ่ม */
+    gap: 14px;
+}
+
+
+/* ===== Link / ปุ่มเลือกแบบฝึก ===== */
+
+.exercise-grid a {
+    display: flex;
+
+    /* จัดข้อความให้อยู่กลางปุ่ม */
+    align-items: center;
+    justify-content: flex-start;
+
+    background-color: white;
+    color: #0057d9;
+
+    font-size: clamp(17px, 1.8vw, 21px);
+    font-weight: 500;
+
+    text-decoration: underline;
+    text-align: left;
+
+    padding: 12px 20px;
+
+    border: 1px solid #cccccc;
+    border-radius: 10px;
+
+    box-sizing: border-box;
+
+    /* ทำให้ปุ่มในแต่ละแถวดูสม่ำเสมอ */
+    min-height: 56px;
+}
+
+
+/* เมื่อนำ mouse ไปชี้บน laptop/desktop */
+
+.exercise-grid a:hover {
+    background-color: #e4edff;
+}
+
+
+/* ตอนกด */
+
+.exercise-grid a:active {
+    background-color: #d8e5ff;
+}
+
+
+/* ==================================================
+   Smartphone แนวตั้ง
+   ================================================== */
+
+@media (max-width: 600px) {
+
+    body {
+        padding: 12px;
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    h1 {
+        white-space: normal;
+        width: 100%;
+        margin-left: 0;
+
+        text-align: center;
+
+        font-size: 24px;
+
+        margin-top: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* Smartphone ใช้ 1 คอลัมน์ */
+    .exercise-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .exercise-grid a {
+        padding: 12px 16px;
+        min-height: 56px;
+    }
+
+}
+
+
+/* ==================================================
+   Tablet / iPad
+   ================================================== */
+
+@media (min-width: 601px) and (max-width: 1024px) {
+
+    .container {
+        width: min(94%, 500px);
+    }
+
+}
+
+
+/* ==================================================
+   Laptop / Desktop
+   ================================================== */
+
+@media (min-width: 1025px) {
+
+    .container {
+        width: 500px;
+        max-width: 94%;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h1>แบบฝึกหัดพื้นฐานสำหรับคณิตศาสตร์มัธยมศึกษาตอนต้น</h1>
+
+
+    <div class="exercise-grid">
+
+        <a href="divisible.html">
+            การหารลงตัว
+        </a>
+
+        <a href="lcm-practice.html">
+            การหา ค.ร.น.
+        </a>
+
+        <a href="order-of-operation.html">
+            ลำดับการดำเนินการ
+        </a>
+        
+        <a href="fraction.html">
+            การคำนวณเศษส่วน
+        </a>
+
+        <a href="linear-equation.html">
+            สมการเชิงเส้นตัวแปรเดียว
+        </a>
+
+        <a href="word-to-equation.html">
+            การสร้างสมการจากข้อความ
+        </a>
+
+        <a href="straight-line-and-graph.html">
+            สมการและกราฟของเส้นตรง
+        </a>
+        
+        <a href="linear-inequalities.html">
+            อสมการเชิงเส้นตัวแปรเดียว
+        </a>
+
+        <a href="system-of-linear-equations.html">
+            ระบบสมการเชิงเส้นสองตัวแปร
+        </a>
+        
+        <a href="quadratic-equation.html">
+            สมการกำลังสอง
+        </a>
+
+        <a href="quadratic-inequalities.html">
+            อสมการกำลังสอง
+        </a>
+
+        <a href="parabola-axis-vertex.html">
+            สมการและกราฟของพาราโบลา
+        </a>        
+        
+        <a href="absolute-value-equation.html">
+            สมการและกราฟของค่าสัมบูรณ์อย่างง่าย
+        </a>
+        
+        <a href="absolute-value-inequality.html">
+            อสมการของค่าสัมบูรณ์อย่างง่าย
+        </a>
+        
+        <a href="polynomial-multiplication.html">
+            การคูณพหุนาม
+        </a>
+        
+        <a href="radical-simplification.html">
+            การลดรูปกรณฑ์
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>
