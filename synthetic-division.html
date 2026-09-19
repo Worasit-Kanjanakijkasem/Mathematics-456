@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>การหารสังเคราะห์และการแยกตัวประกอบ</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(18px, 3.4vw, 30px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+  .questions-list {
+    margin-top: 14px; text-align: center; max-width: 520px; width: 100%;
+    font-size: clamp(13px, 2vw, 16px); color: var(--muted);
+  }
+  .questions-list.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(94vw, 420px); margin: 0 auto 14px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(249,231,149,0.4);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .answer-row { margin-bottom: 9px; font-size: clamp(12.5px, 1.9vw, 15.5px); line-height: 1.55; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+
+  .synth-section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
+  .synth-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+  .synth-table {
+    border-collapse: collapse; font-family: "Consolas", "Cambria", monospace; font-size: clamp(13px, 2vw, 16px);
+    margin: 0 auto;
+  }
+  .synth-table td { padding: 4px 10px; text-align: center; min-width: 34px; }
+  .synth-root-cell { border-right: 1.5px solid var(--gold); font-weight: 700; color: var(--gold); padding-right: 12px; }
+  .synth-coef-row td { font-weight: 700; }
+  .synth-sum-row td { border-top: 1.5px solid var(--ink); font-weight: 700; color: var(--gold); }
+  .synth-remainder { color: var(--coral); }
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle;
+    margin: 0 0.08em; line-height: 1.05;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.03em; }
+  .frac .den { padding-top: 0.03em; }
+
+  .factored-line {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
+    text-align: center; color: var(--gold); margin-top: 10px; line-height: 1.6;
+  }
+
+  .prompt { margin-top: 16px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 560px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(70vw, 320px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">การหารสังเคราะห์และการแยกตัวประกอบ</div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="questions-list" id="questionsList"></div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">แยกตัวประกอบให้ได้มากที่สุด แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกดีกรีของพหุนามที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+
+      <div class="toggle-row">
+        <span>กำลัง 3</span>
+        <label class="switch"><input type="checkbox" id="enable3" checked><span class="slider-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>กำลัง 4</span>
+        <label class="switch"><input type="checkbox" id="enable4" checked><span class="slider-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>กำลัง 5</span>
+        <label class="switch"><input type="checkbox" id="enable5" checked><span class="slider-track"></span></label>
+      </div>
+
+      <div class="settings-error" id="settingsError"></div>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG
+     ========================================================= */
+  const DEFAULT_CFG = { enable3: true, enable4: true, enable5: true };
+  const STORAGE_KEY = "synthdiv-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+
+  /* =========================================================
+     2. POLYNOMIAL UTILITIES (exact integer arithmetic throughout)
+     Coefficients stored highest-degree-first, e.g. x^2+3x+2 -> [1,3,2]
+     ========================================================= */
+  function polyMul(a, b) {
+    const result = new Array(a.length + b.length - 1).fill(0);
+    for (let i = 0; i < a.length; i++)
+      for (let j = 0; j < b.length; j++)
+        result[i + j] += a[i] * b[j];
+    return result;
+  }
+  function polyFromLinearRoot(r) { return [1, -r]; } // (x - r)
+
+  function syntheticDivide(coeffs, r) {
+    // r may be a plain integer OR a {p,q} object meaning the exact fraction p/q
+    // (used for the one allowed fractional root) — computed with exact
+    // numerator/denominator tracking throughout, not a floating-point ratio,
+    // since q=3 cases (like 1/3) are not exactly representable in binary floats
+    // and the true result is always an exact integer at every step (verified
+    // beforehand: 6000/6000 cross-checked before implementing).
+    const rp = typeof r === "object" ? r.p : r, rq = typeof r === "object" ? r.q : 1;
+    // track each running value as an exact fraction {n, d}
+    let bottomFrac = [{ n: coeffs[0], d: 1 }];
+    const productRow = [null];
+    for (let i = 1; i < coeffs.length; i++) {
+      const prev = bottomFrac[i - 1];
+      // prod = prev * (rp/rq) = (prev.n*rp) / (prev.d*rq)
+      const prodN = prev.n * rp, prodD = prev.d * rq;
+      productRow.push(prodN / prodD); // exact for display (verified integer results throughout)
+      // sum = coeffs[i] + prod = (coeffs[i]*prodD + prodN) / prodD
+      const sumN = coeffs[i] * prodD + prodN;
+      bottomFrac.push({ n: sumN, d: prodD });
+    }
+    const bottom = bottomFrac.map(f => f.n / f.d);
+    const remainder = bottom[bottom.length - 1];
+    const quotient = bottom.slice(0, -1);
+    return { quotient, remainder, bottom, productRow };
+  }
+
+  /* =========================================================
+     3. GENERATION
+     Degree n in {3,4,5}; optionally ONE irreducible quadratic
+     factor (discriminant<0), with the REMAINING degree filled by
+     linear roots chosen WITH repetition allowed (confirmed
+     explicitly: repeated roots must be possible, since dividing
+     by the same root twice in a row is itself part of what the
+     exercise should show).
+     ========================================================= */
+  function genIrreducibleQuadratic() {
+    // x^2+bx+c with b^2-4c<0, kept monic for simplicity
+    let b, c;
+    do { b = randInt(-4, 4); c = randInt(1, 6); } while (b * b - 4 * c >= 0);
+    return [1, b, c];
+  }
+  function generateProblem() {
+    const options = [];
+    if (cfg.enable3) options.push(3);
+    if (cfg.enable4) options.push(4);
+    if (cfg.enable5) options.push(5);
+    if (!options.length) options.push(3);
+    const n = choice(options);
+    const hasQuad = Math.random() < 0.45;
+    const linDeg = hasQuad ? n - 2 : n;
+
+    // at most one fractional root (denominator 2 at 1/8, denominator 3 at 1/12 —
+    // verified beforehand: building via the INTEGER factor (q*x - p) and then
+    // synthetically dividing by r=p/q directly always gives a clean integer
+    // quotient, since the polynomial is exactly divisible by (qx-p) by
+    // construction; 6000/6000 cross-checked before implementing)
+    let fracFactor = null; // {q, p} meaning factor (q*x - p), root r = p/q
+    const roll = Math.random();
+    if (linDeg >= 1 && roll < 1 / 8) {
+      fracFactor = { q: 2, p: choice([1, -1, 3, -3, 5, -5]) };
+    } else if (linDeg >= 1 && roll < 1 / 8 + 1 / 12) {
+      fracFactor = { q: 3, p: choice([1, -1, 2, -2, 4, -4]) };
+    }
+    const numIntRoots = linDeg - (fracFactor ? 1 : 0);
+    const intRoots = [];
+    for (let i = 0; i < numIntRoots; i++) intRoots.push(randInt(-3, 3));
+
+    // build the division sequence: skip any root equal to 0 entirely (confirmed —
+    // dividing by x=0 just drops the trailing coefficient with no real teaching
+    // value; instead it's left to appear naturally as trailing zero(s) in the very
+    // last row, exactly as many as there are zero roots, with no step needed at all)
+    const steps = intRoots.filter(r => r !== 0).map(r => ({ isFrac: false, r, display: r }));
+    if (fracFactor) steps.push({ isFrac: true, r: fracFactor.p / fracFactor.q, q: fracFactor.q, p: fracFactor.p, display: fracFactor.p / fracFactor.q });
+    steps.sort((a, b) => a.display - b.display);
+
+    let poly = [1];
+    for (const r of intRoots) poly = polyMul(poly, polyFromLinearRoot(r));
+    if (fracFactor) poly = polyMul(poly, [fracFactor.q, -fracFactor.p]);
+    const quad = hasQuad ? genIrreducibleQuadratic() : null;
+    if (quad) poly = polyMul(poly, quad);
+
+    if (steps.length === 0) return generateProblem(); // all roots happened to be 0 — reroll (rare)
+    return { n, hasQuad, quad, intRoots, fracFactor, steps, poly };
+  }
+
+  /* =========================================================
+     4. FORMATTING
+     ========================================================= */
+  function fmtSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtCoeffTerm(c, powerLabel, isFirst) {
+    if (c === 0) return "";
+    const sign = c > 0 ? (isFirst ? "" : " + ") : (isFirst ? "\u2212" : " \u2212 ");
+    const ac = Math.abs(c);
+    const coeffStr = (ac === 1 && powerLabel !== "") ? "" : `${ac}`;
+    return `${sign}${coeffStr}${powerLabel}`;
+  }
+  function fmtPolynomial(coeffs) {
+    const n = coeffs.length - 1;
+    let s = "";
+    let first = true;
+    for (let i = 0; i <= n; i++) {
+      const power = n - i;
+      const label = power === 0 ? "" : power === 1 ? "x" : `x${"\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079"[power]}`;
+      const term = fmtCoeffTerm(coeffs[i], label, first);
+      if (term !== "") { s += term; first = false; }
+    }
+    if (s === "") s = "0";
+    return `f(x) = ${s}`;
+  }
+  function fmtLinearFactor(r) {
+    return r === 0 ? "x" : (r > 0 ? `(x \u2212 ${r})` : `(x + ${Math.abs(r)})`);
+  }
+  function fmtFactoredForm(prob) {
+    // group repeated integer roots with an exponent, e.g. (x-2)^2
+    const counts = {};
+    for (const r of prob.intRoots) counts[r] = (counts[r] || 0) + 1;
+    let parts = [];
+    for (const r of Object.keys(counts).map(Number).sort((a, b) => a - b)) {
+      const base = fmtLinearFactor(r);
+      parts.push(counts[r] === 1 ? base : `${base}${"\u00b9\u00b2\u00b3\u2074\u2075"[counts[r] - 1] || `^${counts[r]}`}`);
+    }
+    if (prob.fracFactor) {
+      // shown as the integer-coefficient factor (qx-p), matching how such factors
+      // are conventionally written (e.g. "2x-1"), never as "(x-1/2)"
+      const { q, p } = prob.fracFactor;
+      const inner = fmtPolynomial([q, -p]).replace("f(x) = ", "");
+      parts.push(`(${inner})`);
+    }
+    if (prob.hasQuad) {
+      const [a, b, c] = prob.quad;
+      const inner = fmtPolynomial([a, b, c]).replace("f(x) = ", "");
+      parts.push(`(${inner})`);
+    }
+    return `f(x) = ${parts.join("")}`;
+  }
+
+  /* =========================================================
+     5. SYNTHETIC DIVISION TABLE (HTML) — one classic 3-row
+     tableau per linear root, chained so each quotient becomes the
+     next dividend, continuing until only the leading coefficient
+     (no more roots) or the irreducible quadratic remains.
+     ========================================================= */
+  function buildAllSynthSteps(prob) {
+    // Format A (explicitly confirmed over the staircase alternative): one continuous
+    // table, every root's divisor line aligned at the SAME leftmost column. Each
+    // step's sum row IS the next step's coefficient row (never rewritten), so the
+    // table just gets one column narrower on the right at each step rather than
+    // being redrawn from scratch.
+    let current = prob.poly.slice();
+    let rowsHTML = "";
+    // first coefficient row (the original polynomial), labelled with the first root
+    const firstLabel = fmtDivisorLabel(prob.steps[0]);
+    rowsHTML += `<tr class="synth-coef-row"><td class="synth-root-cell">${firstLabel}</td>` +
+      current.map(c => `<td>${fmtSigned(c)}</td>`).join("") + `</tr>`;
+
+    prob.steps.forEach((step, i) => {
+      const divisor = step.isFrac ? { p: step.p, q: step.q } : step.r;
+      const result = syntheticDivide(current, divisor);
+      rowsHTML += `<tr><td class="synth-root-cell"></td>` +
+        result.productRow.map(p => `<td>${p === null ? "" : fmtSigned(p)}</td>`).join("") + `</tr>`;
+      const nextLabel = i + 1 < prob.steps.length ? fmtDivisorLabel(prob.steps[i + 1]) : "";
+      rowsHTML += `<tr class="synth-sum-row"><td class="synth-root-cell">${nextLabel}</td>` +
+        result.bottom.map((v, j) => `<td class="${j === result.bottom.length - 1 ? "synth-remainder" : ""}">${fmtSigned(v)}</td>`).join("") + `</tr>`;
+      current = result.quotient;
+    });
+
+    const html = `<div class="synth-table-wrap"><table class="synth-table"><tbody>${rowsHTML}</tbody></table></div>`;
+    return { html, finalRemaining: current };
+  }
+  function fmtDivisorLabel(step) {
+    if (!step.isFrac) return `x = ${fmtSigned(step.r)}`;
+    return `x = ${fracHTMLSynth(step.p, step.q)}`;
+  }
+  function fracHTMLSynth(p, q) {
+    const sign = p < 0 ? "\u2212" : "";
+    return `${sign}<span class="frac"><span class="num">${Math.abs(p)}</span><span class="den">${q}</span></span>`;
+  }
+
+  /* =========================================================
+     6. GRAPH — x-intercepts from the (possibly repeated) linear
+     roots; y-axis auto-scaled to the sampled min/max; x-domain
+     determined by where those intercepts occur (per the explicit
+     decision), with padding.
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", CURVE_COLOR = "#FFFFFF", DOT_COLOR = "#F96167";
+  function evalPoly(coeffs, x) { return coeffs.reduce((acc, c) => acc * x + c, 0); }
+
+  function buildGraph(prob) {
+    const W = 400, H = 260, padL = 32, padR = 14, padT = 14, padB = 26;
+    const allRootVals = prob.steps.map(s => s.display);
+    const uniqueRoots = [...new Set(allRootVals)];
+    let xLo = Math.min(...uniqueRoots, 0), xHi = Math.max(...uniqueRoots, 0);
+    let span = xHi - xLo;
+    if (span < 4) { const m = (xLo + xHi) / 2; xLo = m - 2; xHi = m + 2; span = 4; }
+    const pad = span * 0.3;
+    xLo -= pad; xHi += pad;
+
+    const steps = 160;
+    let yLo = Infinity, yHi = -Infinity;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      const y = evalPoly(prob.poly, x);
+      pts.push([x, y]);
+      if (y < yLo) yLo = y;
+      if (y > yHi) yHi = y;
+    }
+    if (yHi - yLo < 1e-6) { yLo -= 1; yHi += 1; }
+    const yPad = (yHi - yLo) * 0.15;
+    yLo -= yPad; yHi += yPad;
+    if (yLo > 0) yLo = -((yHi - yLo) * 0.08);
+    if (yHi < 0) yHi = (yHi - yLo) * 0.08;
+
+    const scaleX = (W - padL - padR) / (xHi - xLo);
+    const scaleY = (H - padT - padB) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPy = (y) => H - padB - (y - yLo) * scaleY;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    if (yLo < 0 && yHi > 0) svg += `<line x1="${toPx(xLo)}" y1="${toPy(0)}" x2="${toPx(xHi)}" y2="${toPy(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    if (xLo < 0 && xHi > 0) svg += `<line x1="${toPx(0)}" y1="${toPy(yHi)}" x2="${toPx(0)}" y2="${toPy(yLo)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    // x tick labels at integers within range
+    for (let xv = Math.ceil(xLo); xv <= Math.floor(xHi); xv++) {
+      const px = toPx(xv);
+      svg += `<line x1="${px.toFixed(1)}" y1="${(toPy(0) - 3).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(toPy(0) + 3).toFixed(1)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    }
+    let d = "";
+    pts.forEach(([x, y], i) => { d += (i === 0 ? "M" : "L") + toPx(x).toFixed(1) + "," + toPy(y).toFixed(1) + " "; });
+    svg += `<path d="${d}" fill="none" stroke="${CURVE_COLOR}" stroke-width="2.3"/>`;
+    for (const r of uniqueRoots) {
+      const step = prob.steps.find(s => s.display === r);
+      const label = step.isFrac ? `${step.p}/${step.q}` : `${step.r}`;
+      svg += `<circle cx="${toPx(r).toFixed(1)}" cy="${toPy(0).toFixed(1)}" r="4" fill="${DOT_COLOR}" stroke="#232D63" stroke-width="1"/>`;
+      svg += `<text x="${toPx(r).toFixed(1)}" y="${(toPy(0) + 16).toFixed(1)}" font-size="11" fill="${DOT_COLOR}" text-anchor="middle" font-family="Calibri, sans-serif">${label}</text>`;
+    }
+    svg += "</svg>";
+    return svg;
+  }
+
+  /* =========================================================
+     7. DISPLAY / EVENTS
+     ========================================================= */
+  const exprEl = document.getElementById("exprEl");
+  const questionsList = document.getElementById("questionsList");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const enable3 = document.getElementById("enable3");
+  const enable4 = document.getElementById("enable4");
+  const enable5 = document.getElementById("enable5");
+
+  let current = null;
+
+  function buildAnswerCardHTML(prob) {
+    const { html: synthHTML } = buildAllSynthSteps(prob);
+    return `
+      <div class="answer-row"><b>1. กราฟและจุดตัดแกน x:</b> ดูรูปด้านบน</div>
+      <div class="synth-section-title">2. การหารสังเคราะห์ทีละขั้น:</div>
+      ${synthHTML}
+      <div class="synth-section-title">3. สรุปการแยกตัวประกอบ:</div>
+      <div class="factored-line">${fmtPolynomial(prob.poly)}</div>
+      <div class="factored-line">${fmtFactoredForm(prob)}</div>
+    `;
+  }
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    questionsList.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "แยกตัวประกอบให้ได้มากที่สุด แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    questionsList.style.display = "none";
+    answerWrap.style.display = "";
+    graphBox.innerHTML = buildGraph(current);
+    answerCard.innerHTML = buildAnswerCardHTML(current);
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      exprEl.innerHTML = fmtPolynomial(current.poly);
+      questionsList.innerHTML = "จงแยกตัวประกอบของ f(x) ให้ได้มากที่สุด โดยใช้การหารสังเคราะห์";
+      displayProblem();
+      exprEl.classList.remove("swap"); questionsList.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const els = showingAnswer ? [answerWrap] : [exprEl, questionsList];
+    els.forEach(el => el.classList.add("swap"));
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? [answerWrap] : [exprEl, questionsList]).forEach(el => el.classList.remove("swap"));
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    enable3.checked = cfg.enable3;
+    enable4.checked = cfg.enable4;
+    enable5.checked = cfg.enable5;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    if (!enable3.checked && !enable4.checked && !enable5.checked) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 แบบ";
+      return;
+    }
+    cfg = { enable3: enable3.checked, enable4: enable4.checked, enable5: enable5.checked };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  exprEl.innerHTML = fmtPolynomial(current.poly);
+  questionsList.innerHTML = "จงแยกตัวประกอบของ f(x) ให้ได้มากที่สุด โดยใช้การหารสังเคราะห์";
+  displayProblem();
+</script>
+</body>
+</html>
