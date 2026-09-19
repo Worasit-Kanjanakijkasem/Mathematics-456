@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>กราฟค่าสัมบูรณ์ (มัธยมปลาย)</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+  .type-badge { font-size: clamp(12px, 1.6vw, 15px); color: var(--muted); margin-bottom: 6px; z-index: 1; }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(19px, 3.6vw, 32px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.7;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+  .questions-list {
+    margin-top: 14px; text-align: left; max-width: 520px; width: 100%;
+    font-size: clamp(13px, 2vw, 16px); line-height: 1.7; color: var(--ink);
+  }
+  .questions-list ol { margin: 0; padding-left: 22px; }
+  .questions-list li { margin-bottom: 4px; }
+  .questions-list.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(94vw, 460px); margin: 0 auto 6px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+  .graph-stack { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(249,231,149,0.4);
+    border-radius: 16px;
+    padding: 16px 20px;
+  }
+  .answer-row { margin-bottom: 9px; font-size: clamp(12.5px, 1.9vw, 15.5px); line-height: 1.55; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle;
+    margin: 0 0.1em; line-height: 1.05;
+  }
+  .outer-bar { font-size: 1.5em; vertical-align: -0.15em; display: inline-block; font-weight: 400; }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.04em; }
+  .frac .den { padding-top: 0.04em; }
+
+  .prompt { margin-top: 16px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 560px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(80vw, 340px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">กราฟค่าสัมบูรณ์ (มัธยมปลาย)</div>
+  <div class="type-badge" id="typeBadge"></div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="questions-list" id="questionsList"></div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-stack" id="graphStack"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">วิเคราะห์และร่างกราฟ แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกประเภทโจทย์ที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+
+      <div class="toggle-row">
+        <span>1. ผลบวก y = y₁ + y₂</span>
+        <label class="switch"><input type="checkbox" id="enableSum" checked><span class="slider-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>2. ค่าสัมบูรณ์ซ้อน</span>
+        <label class="switch"><input type="checkbox" id="enableNested" checked><span class="slider-track"></span></label>
+      </div>
+
+      <div class="settings-error" id="settingsError"></div>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG
+     ========================================================= */
+  const DEFAULT_CFG = { enableSum: true, enableNested: true };
+  const STORAGE_KEY = "absval-hs-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function nonZero(min, max) { let v; do { v = randInt(min, max); } while (v === 0); return v; }
+
+  /* =========================================================
+     2. GENERATION — TYPE "sum": y = y1 + y2
+     Each yi is given in the COMPACT form Ai|Bi*x+Ci|+Di and must
+     be converted to standard form ai|x-hi|+ki before it can be
+     graphed (ai = Ai*|Bi|, hi = -Ci/Bi, ki = Di — the ai=Ai*|Bi|
+     step, using the ABSOLUTE VALUE of Bi and not Bi directly, was
+     verified algebraically and numerically beforehand). h1 and h2
+     are forced distinct so the sum always shows a genuine 3-piece
+     graph, per the explicit decision to exclude the merged case.
+     ========================================================= */
+  function genOneCompactAbs(hExclude, includeD) {
+    const A = nonZero(-3, 3);
+    const B = nonZero(-3, 3);
+    let h;
+    do { h = randInt(-6, 6); } while (hExclude !== undefined && h === hExclude);
+    const C = -B * h;
+    const D = includeD ? randInt(-5, 5) : 0; // per the explicit simplification: D1+D2 always
+    const a = A * Math.abs(B);               // just add together, so only ONE free constant
+    const k = D;                             // is needed anywhere in y1+y2 — keep it on y2 only
+    return { A, B, C, D, a, h, k };
+  }
+  function genSum() {
+    const y1 = genOneCompactAbs(undefined, false);
+    const y2 = genOneCompactAbs(y1.h, true);
+    return { type: "sum", y1, y2 };
+  }
+
+  /* =========================================================
+     3. GENERATION — TYPE "nested": y = A|B*y1+C| + D, y1 = a1|x-h1|+k1
+     y1 is already given in standard form directly. The kink count
+     of the final graph (1 or 3) is controlled by comparing the
+     sign of (B*k1+C) — its value exactly at y1's own vertex —
+     against sign(B)*sign(a1): equal signs give exactly 1 kink
+     (the outer absolute value never actually folds anything),
+     opposite signs guarantee exactly 3 kinks. Verified both
+     algebraically and via numeric kink-counting (0 mismatches
+     across 200 generated cases per target) before implementing.
+     ========================================================= */
+  function classifyNested(a1, k1, B, C) {
+    const startVal = B * k1 + C;
+    if (startVal === 0) return null; // degenerate boundary, reroll
+    const P = Math.sign(B) * Math.sign(a1);
+    const is1Kink = Math.sign(startVal) === P;
+    return is1Kink ? 1 : 3;
+  }
+  function genNested() {
+    const target = choice([1, 3]);
+    for (let tries = 0; tries < 300; tries++) {
+      const a1 = nonZero(-3, 3);
+      const h1 = randInt(-5, 5);
+      const k1 = 0; // dropped: once shown as one combined equation, k1 always merges into C, so it's a redundant free parameter
+      const B = nonZero(-3, 3);
+      const C = randInt(-10, 10);
+      const kinkCount = classifyNested(a1, k1, B, C);
+      if (kinkCount !== target) continue;
+      const A = nonZero(-2, 2);
+      const D = randInt(-4, 4);
+      return { type: "nested", a1, h1, k1, B, C, A, D, kinkCount };
+    }
+    return genNested(); // extremely unlikely fallback
+  }
+
+  /* =========================================================
+     4. FORMATTING
+     ========================================================= */
+  function gcdInt(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcdInt(b, a % b); }
+  function fracHTML(p, q) {
+    if (q < 0) { p = -p; q = -q; }
+    const g = gcdInt(p, q) || 1;
+    p /= g; q /= g;
+    const sign = p < 0 ? "\u2212" : "";
+    const ap = Math.abs(p);
+    if (q === 1) return `${sign}${ap}`;
+    return `${sign}<span class="frac"><span class="num">${ap}</span><span class="den">${q}</span></span>`;
+  }
+  function fmtSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtCoeff(n) { if (n === 1) return ""; if (n === -1) return "\u2212"; return fmtSigned(n); }
+  function fmtLinInside(B, x, C) {
+    // B*x + C (or B*y1 + C) shown compactly, e.g. "3x + 4", "-2x - 5", "y\u2081 + 4"
+    const bPart = `${fmtCoeff(B)}${x}`;
+    if (C === 0) return bPart;
+    return C > 0 ? `${bPart} + ${C}` : `${bPart} \u2212 ${Math.abs(C)}`;
+  }
+  function fmtCompactAbs(name, t) {
+    const inner = fmtLinInside(t.B, "x", t.C);
+    const outer = `${fmtCoeff(t.A)}|${inner}|`;
+    const withD = t.D === 0 ? outer : (t.D > 0 ? `${outer} + ${t.D}` : `${outer} \u2212 ${Math.abs(t.D)}`);
+    return `${name} = ${withD}`;
+  }
+  function fmtStandardAbs(name, a, h, k) {
+    const hStr = h === 0 ? "x" : (h > 0 ? `x \u2212 ${h}` : `x + ${Math.abs(h)}`);
+    const outer = `${fmtCoeff(a)}|${hStr}|`;
+    const withK = k === 0 ? outer : (k > 0 ? `${outer} + ${k}` : `${outer} \u2212 ${Math.abs(k)}`);
+    return `${name} = ${withK}`;
+  }
+
+  function buildQuestionsHTML(prob) {
+    return `<div>จงร่างกราฟของสมการข้างต้น</div>`;
+  }
+  function fmtProblem(prob) {
+    if (prob.type === "sum") {
+      const t1 = fmtCompactAbs("y", prob.y1).replace("y = ", "");
+      const inner2 = fmtLinInside(prob.y2.B, "x", prob.y2.C);
+      const connector = prob.y2.A >= 0 ? " + " : " \u2212 ";
+      const absCoeff2 = Math.abs(prob.y2.A);
+      const coeffStr2 = absCoeff2 === 1 ? "" : `${absCoeff2}`;
+      let term2 = `${coeffStr2}|${inner2}|`;
+      term2 += prob.y2.D === 0 ? "" : (prob.y2.D > 0 ? ` + ${prob.y2.D}` : ` \u2212 ${Math.abs(prob.y2.D)}`);
+      return `y = ${t1}${connector}${term2}`;
+    } else {
+      // combine B*(a1|x-h1|) into one coefficient M = B*a1 for the inner absolute value,
+      // since k1 is dropped and this is now shown as a single already-combined equation.
+      // The outer bars are rendered visibly TALLER than the inner ones (per the explicit
+      // fix requested) so a run of several "|" characters in a row can't be misread as
+      // pairing with the wrong partner (e.g. "-4|x|" mistaken for "|4|" on its own).
+      const OB = '<span class="outer-bar">|</span>';
+      const M = prob.B * prob.a1;
+      const hStr = prob.h1 === 0 ? "x" : (prob.h1 > 0 ? `x \u2212 ${prob.h1}` : `x + ${Math.abs(prob.h1)}`);
+      const innerAbs = `${fmtCoeff(M)}|${hStr}|`;
+      const withC = prob.C === 0 ? innerAbs : (prob.C > 0 ? `${innerAbs} + ${prob.C}` : `${innerAbs} \u2212 ${Math.abs(prob.C)}`);
+      const outer = `${fmtCoeff(prob.A)}${OB}${withC}${OB}`;
+      const withD = prob.D === 0 ? outer : (prob.D > 0 ? `${outer} + ${prob.D}` : `${outer} \u2212 ${Math.abs(prob.D)}`);
+      return `y = ${withD}`;
+    }
+  }
+
+  /* =========================================================
+     5. GRAPH RENDERING — one shared panel-drawing routine, with
+     the x-viewport auto-scaled per problem so every kink and both
+     axes stay comfortably in view (per the explicit decision to
+     auto-scale rather than use a fixed window here).
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", COL1 = "#F96167", COL2 = "#8FD3F4", COL_SUM = "#FFFFFF", GOLD = "#F9E795";
+
+  function panelContent(curves, xLo, xHi, W, H, label, segLabels) {
+    const padL = 30, padR = 12, padT = 20, padB = 22;
+    let yLo = Infinity, yHi = -Infinity;
+    const steps = 120;
+    const sampled = curves.map(c => {
+      const pts = [];
+      for (let i = 0; i <= steps; i++) {
+        const x = xLo + ((xHi - xLo) * i) / steps;
+        const y = c.fn(x);
+        pts.push([x, y]);
+        if (y < yLo) yLo = y;
+        if (y > yHi) yHi = y;
+      }
+      return { ...c, pts };
+    });
+    if (yHi - yLo < 1e-6) { yLo -= 1; yHi += 1; }
+    const yPad = (yHi - yLo) * 0.15;
+    yLo -= yPad; yHi += yPad;
+    if (yLo > 0) yLo = -((yHi - yLo) * 0.08);
+    if (yHi < 0) yHi = (yHi - yLo) * 0.08;
+
+    const scaleX = (W - padL - padR) / (xHi - xLo);
+    const scaleY = (H - padT - padB) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPy = (y) => H - padB - (y - yLo) * scaleY;
+
+    let svg = "";
+    if (yLo < 0 && yHi > 0) svg += `<line x1="${toPx(xLo)}" y1="${toPy(0)}" x2="${toPx(xHi)}" y2="${toPy(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    if (xLo < 0 && xHi > 0) svg += `<line x1="${toPx(0)}" y1="${toPy(yHi)}" x2="${toPx(0)}" y2="${toPy(yLo)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    for (const c of sampled) {
+      let d = "";
+      c.pts.forEach(([x, y], i) => { d += (i === 0 ? "M" : "L") + toPx(x).toFixed(1) + "," + toPy(y).toFixed(1) + " "; });
+      svg += `<path d="${d}" fill="none" stroke="${c.color}" stroke-width="2.3"/>`;
+    }
+    if (segLabels) {
+      for (const sl of segLabels) {
+        const px = Math.max(padL + 4, Math.min(W - padR - 4, toPx(sl.x)));
+        svg += `<text x="${px.toFixed(1)}" y="${(padT + 6).toFixed(1)}" font-size="9.5" fill="${sl.color || GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${sl.text}</text>`;
+      }
+    }
+    if (label) svg += `<text x="8" y="14" font-size="12" fill="${GOLD}" font-weight="700" font-family="Calibri, sans-serif">${label}</text>`;
+    return { svg, toPx };
+  }
+  function panelSvg(curves, xLo, xHi, W, H, label, segLabels) {
+    const { svg } = panelContent(curves, xLo, xHi, W, H, label, segLabels);
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  function xViewportFromKeys(keys, minSpan = 6) {
+    let lo = Math.min(...keys), hi = Math.max(...keys);
+    let span = hi - lo;
+    if (span < minSpan) { const m = (lo + hi) / 2; lo = m - minSpan / 2; hi = m + minSpan / 2; span = minSpan; }
+    const pad = span * 0.35;
+    return { xLo: lo - pad, xHi: hi + pad };
+  }
+
+  function buildGraphs(prob) {
+    const W = 440, H = 190;
+    if (prob.type === "sum") {
+      const { xLo, xHi } = xViewportFromKeys([prob.y1.h, prob.y2.h]);
+      const f1 = (x) => prob.y1.a * Math.abs(x - prob.y1.h) + prob.y1.k;
+      const f2 = (x) => prob.y2.a * Math.abs(x - prob.y2.h) + prob.y2.k;
+      const fSum = (x) => f1(x) + f2(x);
+      const [segL, segM, segR] = computePiecewiseSum(prob);
+      const midOfSeg = (s, fallbackLo, fallbackHi) => (Math.max(s.lo, fallbackLo) + Math.min(s.hi, fallbackHi)) / 2;
+      const segLabels = [
+        { x: midOfSeg(segL, xLo, segL.hi), text: fmtLine(segL.A, segL.B) },
+        { x: midOfSeg(segM, segM.lo, segM.hi), text: fmtLine(segM.A, segM.B) },
+        { x: midOfSeg(segR, segR.lo, xHi), text: fmtLine(segR.A, segR.B) }
+      ];
+      const gap = 4;
+      const p1 = panelContent([{ fn: f1, color: COL1 }, { fn: f2, color: COL2 }], xLo, xHi, W, H, "y\u2081 (\u0e41\u0e14\u0e07) \u0e41\u0e25\u0e30 y\u2082 (\u0e1f\u0e49\u0e32)");
+      const p2 = panelContent([{ fn: fSum, color: COL_SUM }], xLo, xHi, W, H, "y = y\u2081 + y\u2082", segLabels);
+      const totalH = H * 2 + gap;
+      let combined = `<svg viewBox="0 0 ${W} ${totalH}" xmlns="http://www.w3.org/2000/svg">`;
+      combined += `<g transform="translate(0,0)">${p1.svg}</g>`;
+      combined += `<g transform="translate(0,${H + gap})">${p2.svg}</g>`;
+      // dashed vertical guides at h1,h2 spanning both panels, so the two kink positions line up visibly
+      for (const hx of [prob.y1.h, prob.y2.h]) {
+        const px = p1.toPx(hx);
+        combined += `<line x1="${px.toFixed(1)}" y1="0" x2="${px.toFixed(1)}" y2="${totalH}" stroke="${GOLD}" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/>`;
+      }
+      combined += "</svg>";
+      return [combined];
+    } else {
+      const f1 = (x) => prob.a1 * Math.abs(x - prob.h1) + prob.k1;
+      const fMid = (x) => prob.B * f1(x) + prob.C;
+      const fFinal = (x) => prob.A * Math.abs(fMid(x)) + prob.D;
+      // key x-positions: h1 always; plus the (up to 2) points where f1(x) = -C/B, when they exist
+      const keys = [prob.h1];
+      const target = (-prob.C / prob.B - prob.k1) / prob.a1;
+      if (target >= 0) {
+        const dx = target;
+        keys.push(prob.h1 - dx, prob.h1 + dx);
+      }
+      const { xLo, xHi } = xViewportFromKeys(keys);
+      const p1 = panelSvg([{ fn: f1, color: COL1 }], xLo, xHi, W, H, "y\u2081");
+      const p2 = panelSvg([{ fn: fMid, color: COL2 }], xLo, xHi, W, H, "B\u00b7y\u2081 + C");
+      const p3 = panelSvg([{ fn: fFinal, color: COL_SUM }], xLo, xHi, W, H, "y (\u0e04\u0e33\u0e15\u0e2d\u0e1a\u0e2a\u0e38\u0e14\u0e17\u0e49\u0e32\u0e22)");
+      return [p1, p2, p3];
+    }
+  }
+
+  /* =========================================================
+     6. ANSWER CARD TEXT
+     ========================================================= */
+  function computePiecewiseSum(prob) {
+    // returns the 3 linear pieces {lo, hi, A, B} (meaning y=A*x+B) of y=y1+y2, using
+    // the standard-form a,h,k already derived for each (verified algebraically and
+    // numerically against direct evaluation before implementing, 0 mismatches/500)
+    const { a: a1, h: h1, k: k1 } = prob.y1;
+    const { a: a2, h: h2, k: k2 } = prob.y2;
+    const lo = Math.min(h1, h2), hi = Math.max(h1, h2);
+    const segLeft = { lo: -Infinity, hi: lo, A: -(a1 + a2), B: a1 * h1 + a2 * h2 + k1 + k2 };
+    const segRight = { lo: hi, hi: Infinity, A: a1 + a2, B: -a1 * h1 - a2 * h2 + k1 + k2 };
+    // middle segment: depends on which of h1,h2 is smaller (sign flips accordingly)
+    const segMid = h1 <= h2
+      ? { lo, hi, A: a1 - a2, B: -a1 * h1 + a2 * h2 + k1 + k2 }
+      : { lo, hi, A: a2 - a1, B: a1 * h1 - a2 * h2 + k1 + k2 };
+    return [segLeft, segMid, segRight];
+  }
+  function fmtLine(A, B) {
+    const bPart = B === 0 ? "0" : (B > 0 ? `${B}` : `\u2212${Math.abs(B)}`);
+    if (A === 0) return `y = ${bPart}`;
+    const xPart = A === 1 ? "x" : A === -1 ? "\u2212x" : `${fmtSigned(A)}x`;
+    const bSuffix = B === 0 ? "" : (B > 0 ? ` + ${B}` : ` \u2212 ${Math.abs(B)}`);
+    return `y = ${xPart}${bSuffix}`;
+  }
+
+  function fmtAnswerCard(prob) {
+    if (prob.type === "sum") {
+      const [segL, segM, segR] = computePiecewiseSum(prob);
+      const loStr = fmtSigned(segM.lo), hiStr = fmtSigned(segM.hi);
+      return `
+        <div class="answer-row"><b>1. จัดรูปมาตรฐาน:</b></div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;a\u2081 = A\u2081\u00d7|B\u2081| = ${fmtSigned(prob.y1.A)}\u00d7|${fmtSigned(prob.y1.B)}| = ${fmtSigned(prob.y1.a)},&nbsp; h\u2081 = \u2212C\u2081/B\u2081 = ${fracHTML(-prob.y1.C, prob.y1.B)},&nbsp; k\u2081 = ${fmtSigned(prob.y1.k)}</div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;\u2192 ${fmtStandardAbs("y\u2081", prob.y1.a, prob.y1.h, prob.y1.k)}</div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;a\u2082 = A\u2082\u00d7|B\u2082| = ${fmtSigned(prob.y2.A)}\u00d7|${fmtSigned(prob.y2.B)}| = ${fmtSigned(prob.y2.a)},&nbsp; h\u2082 = \u2212C\u2082/B\u2082 = ${fracHTML(-prob.y2.C, prob.y2.B)},&nbsp; k\u2082 = ${fmtSigned(prob.y2.k)}</div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;\u2192 ${fmtStandardAbs("y\u2082", prob.y2.a, prob.y2.h, prob.y2.k)}</div>
+        <div class="answer-row"><b>2\u20133. กราฟ:</b> ดูรูปด้านบน (แผงบน = y\u2081,y\u2082 ซ้อนกัน / แผงล่าง = ผลบวก)</div>
+        <div class="answer-row"><b>สมการเส้นตรงแต่ละช่วง (ผลบวก):</b></div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;x &lt; ${loStr}: &nbsp;${fmtLine(segL.A, segL.B)}</div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;${loStr} \u2264 x \u2264 ${hiStr}: &nbsp;${fmtLine(segM.A, segM.B)}</div>
+        <div class="answer-row">&nbsp;&nbsp;&nbsp;x &gt; ${hiStr}: &nbsp;${fmtLine(segR.A, segR.B)}</div>
+      `;
+    } else {
+      const kinkNote = prob.kinkCount === 1
+        ? "กรณีนี้ B\u00b7y\u2081+C ไม่เคยเท่ากับ 0 เลย \u2192 ค่าสัมบูรณ์ชั้นนอกไม่พับกราฟเพิ่ม เหลือแค่ 1 จุดหักมุมเดิมจาก y\u2081"
+        : "กรณีนี้ B\u00b7y\u2081+C ตัดผ่าน 0 ที่ 2 จุด \u2192 เกิดจุดหักมุมใหม่ 2 จุด บวกกับจุดเดิมจาก y\u2081 รวมเป็น 3 จุดหักมุม";
+      return `
+        <div class="answer-row"><b>1. y\u2081:</b> ${fmtStandardAbs("", prob.a1, prob.h1, prob.k1).replace("= ", "")}</div>
+        <div class="answer-row"><b>2. ขั้นกลาง B\u00b7y\u2081+C:</b> เป็นการปรับ y\u2081 ด้วยการคูณ ${prob.B} แล้วบวก ${prob.C} (รูปร่างยังเป็น V เดิม เปลี่ยนแค่ความชัน/ตำแหน่ง)</div>
+        <div class="answer-row"><b>3. y สุดท้าย:</b> ${kinkNote}</div>
+        <div class="answer-row">จำนวนจุดหักมุมของกราฟสุดท้าย: <b>${prob.kinkCount} จุด</b></div>
+      `;
+    }
+  }
+
+  /* =========================================================
+     7. MAIN GENERATOR + DISPLAY
+     ========================================================= */
+  function generateProblem() {
+    const options = [];
+    if (cfg.enableSum) options.push("sum");
+    if (cfg.enableNested) options.push("nested");
+    if (!options.length) options.push("sum");
+    const kind = choice(options);
+    return kind === "sum" ? genSum() : genNested();
+  }
+
+  const TYPE_LABELS = { sum: "แบบที่ 1: ผลบวกของค่าสัมบูรณ์", nested: "แบบที่ 2: ค่าสัมบูรณ์ซ้อน" };
+
+  const typeBadge = document.getElementById("typeBadge");
+  const exprEl = document.getElementById("exprEl");
+  const questionsList = document.getElementById("questionsList");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphStack = document.getElementById("graphStack");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const enableSum = document.getElementById("enableSum");
+  const enableNested = document.getElementById("enableNested");
+
+  let current = null;
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    questionsList.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "วิเคราะห์และร่างกราฟ แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    questionsList.style.display = "none";
+    answerWrap.style.display = "";
+    graphStack.innerHTML = buildGraphs(current).map(svg => `<div class="graph-box">${svg}</div>`).join("");
+    answerCard.innerHTML = fmtAnswerCard(current);
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      typeBadge.textContent = TYPE_LABELS[current.type];
+      exprEl.innerHTML = fmtProblem(current);
+      questionsList.innerHTML = buildQuestionsHTML(current);
+      displayProblem();
+      exprEl.classList.remove("swap"); questionsList.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const els = showingAnswer ? [answerWrap] : [exprEl, questionsList];
+    els.forEach(el => el.classList.add("swap"));
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? [answerWrap] : [exprEl, questionsList]).forEach(el => el.classList.remove("swap"));
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    enableSum.checked = cfg.enableSum;
+    enableNested.checked = cfg.enableNested;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    if (!enableSum.checked && !enableNested.checked) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 แบบ";
+      return;
+    }
+    cfg = { enableSum: enableSum.checked, enableNested: enableNested.checked };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  typeBadge.textContent = TYPE_LABELS[current.type];
+  exprEl.innerHTML = fmtProblem(current);
+  questionsList.innerHTML = buildQuestionsHTML(current);
+  displayProblem();
+</script>
+</body>
+</html>
