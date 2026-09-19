@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>กราฟ sine และ cosine</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(22px, 4.2vw, 42px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+  .questions-list {
+    margin-top: 16px; text-align: left; max-width: 520px; width: 100%;
+    font-size: clamp(13px, 2vw, 16.5px); line-height: 1.8; color: var(--ink);
+  }
+  .questions-list ol { margin: 0; padding-left: 22px; }
+  .questions-list li { margin-bottom: 4px; }
+  .questions-list.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(94vw, 460px); margin: 0 auto 14px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(249,231,149,0.4);
+    border-radius: 16px;
+    padding: 16px 20px;
+  }
+  .answer-row { margin-bottom: 9px; font-size: clamp(13px, 2vw, 16px); line-height: 1.55; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle;
+    margin: 0 0.1em; line-height: 1.05;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.04em; }
+  .frac .den { padding-top: 0.04em; }
+
+  .prompt { margin-top: 18px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .field-group { margin-bottom: 16px; }
+  .field-group .label { font-size: 13px; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 480px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .field-group { margin-bottom: 8px; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(80vw, 360px); margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">กราฟ Sine และ Cosine</div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="questions-list" id="questionsList"></div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">วิเคราะห์กราฟ แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกฟังก์ชันที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+
+      <div class="toggle-row">
+        <span>Sine</span>
+        <label class="switch"><input type="checkbox" id="enableSin" checked><span class="slider-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Cosine</span>
+        <label class="switch"><input type="checkbox" id="enableCos" checked><span class="slider-track"></span></label>
+      </div>
+
+      <div class="settings-error" id="settingsError"></div>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG
+     ========================================================= */
+  const DEFAULT_CFG = { enableSin: true, enableCos: true };
+  const STORAGE_KEY = "sincos-graph-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcd(b, a % b); }
+
+  /* =========================================================
+     2. PI-FRACTION FORMATTING (exact p/q multiples of pi)
+     ========================================================= */
+  function piFrac(p, q) {
+    if (p === 0) return { p: 0, q: 1 };
+    const g = gcd(p, q) || 1;
+    let pp = p / g, qq = q / g;
+    if (qq < 0) { pp = -pp; qq = -qq; }
+    return { p: pp, q: qq };
+  }
+  function fmtPi(frac, { forceParen = false } = {}) {
+    // frac represents (p/q)*pi
+    if (frac.p === 0) return "0";
+    const sign = frac.p < 0 ? "\u2212" : "";
+    const ap = Math.abs(frac.p);
+    const coeffStr = ap === 1 ? "" : `${ap}`;
+    const body = frac.q === 1 ? `${coeffStr}\u03c0` : `<span class="frac"><span class="num">${coeffStr}\u03c0</span><span class="den">${frac.q}</span></span>`;
+    return `${sign}${body}`;
+  }
+  function fmtPiVal(frac) { return frac.p * Math.PI / frac.q; }
+
+  /* =========================================================
+     3. GENERATION
+     y = a*sin(b(x-h)) + k   or   y = a*cos(b(x-h)) + k
+     Domain is always fixed at [-2pi, 2pi] (the user's own choice,
+     to keep every problem visually comparable). b is restricted to
+     a small set so the number of periods shown in that fixed
+     window stays reasonable (1 to 6 periods; b=4 was checked and
+     rejected for looking too cramped at 8 periods).
+     ========================================================= */
+  const B_CHOICES = [{ p: 1, q: 2 }, { p: 1, q: 1 }, { p: 2, q: 1 }, { p: 3, q: 1 }]; // b itself (not a pi-multiple)
+  const H_CHOICES = [
+    { p: 0, q: 1 }, { p: 1, q: 6 }, { p: -1, q: 6 }, { p: 1, q: 4 }, { p: -1, q: 4 },
+    { p: 1, q: 3 }, { p: -1, q: 3 }, { p: 1, q: 2 }, { p: -1, q: 2 }, { p: 2, q: 3 }, { p: -2, q: 3 }
+  ];
+
+  function generateProblem() {
+    const options = [];
+    if (cfg.enableSin) options.push("sin");
+    if (cfg.enableCos) options.push("cos");
+    if (!options.length) options.push("sin");
+    const fn = choice(options);
+
+    let a;
+    do { a = randInt(-5, 5); } while (a === 0);
+    const b = choice(B_CHOICES); // {p,q} meaning b = p/q (a plain number, not a pi-multiple)
+    const h = choice(H_CHOICES); // {p,q} meaning h = (p/q)*pi
+    const k = randInt(-4, 4);
+
+    const period = piFrac(2 * b.q, b.p); // period = 2*pi / b = 2*pi*q/p (since b=p/q) -> (2q/p)*pi
+    return { fn, a, b, h, k, period };
+  }
+
+  function fmtB(b) {
+    if (b.q === 1) return `${b.p}`;
+    return `<span class="frac"><span class="num">${b.p}</span><span class="den">${b.q}</span></span>`;
+  }
+  function fmtBVal(b) { return b.p / b.q; }
+
+  /* =========================================================
+     4. FORMATTING
+     ========================================================= */
+  function fmtAmpCoeff(a) {
+    if (a === 1) return "";
+    if (a === -1) return "\u2212";
+    return a < 0 ? `\u2212${Math.abs(a)}` : `${a}`;
+  }
+  function fmtNumSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtInnerX(h) {
+    if (h.p === 0) return "x";
+    const hStr = fmtPi(h);
+    return h.p > 0 ? `x \u2212 ${hStr}` : `x + ${fmtPi({ p: -h.p, q: h.q })}`;
+  }
+  function fmtOuterK(k) {
+    if (k === 0) return "";
+    return k > 0 ? ` + ${k}` : ` \u2212 ${Math.abs(k)}`;
+  }
+  function fmtBX(b) {
+    // formats the "b*x" part alone: "x" when b=1, "2x" for integer b, or a stacked
+    // fraction "x/q" when b=1/q (the only fractional case among B_CHOICES, where the
+    // numerator is always 1).
+    if (b.p === 1 && b.q === 1) return "x";
+    if (b.q === 1) return `${b.p}x`;
+    return `<span class="frac"><span class="num">x</span><span class="den">${b.q}</span></span>`;
+  }
+  function computeC(b, h) {
+    // c = -b*h, exact as a pi-fraction (verified algebraically and numerically
+    // beforehand): b=(bp/bq), h=(hp/hq)*pi -> c = -(bp*hp)/(bq*hq) * pi
+    return piFrac(-b.p * h.p, b.q * h.q);
+  }
+  function fmtSignedPi(frac) {
+    if (frac.p === 0) return "";
+    return frac.p > 0 ? ` + ${fmtPi(frac)}` : ` \u2212 ${fmtPi({ p: -frac.p, q: frac.q })}`;
+  }
+  function fmtProblem(prob) {
+    // the problem is shown already multiplied out (b*(x-h) expanded to bx+c) so the
+    // student must do the factoring themselves to read off the phase shift, matching
+    // the compact form actually seen on exams.
+    const fnName = prob.fn === "sin" ? "sin" : "cos";
+    const c = computeC(prob.b, prob.h);
+    const argument = fmtBX(prob.b) + fmtSignedPi(c);
+    return `y = ${fmtAmpCoeff(prob.a)}${fnName}(${argument})${fmtOuterK(prob.k)}`;
+  }
+  function fmtFactoredForm(prob) {
+    // the y=a*sin(b(x-h))+k label used to annotate the answer's graph
+    const fnName = prob.fn === "sin" ? "sin" : "cos";
+    const bVal = fmtBVal(prob.b);
+    const inner = fmtInnerX(prob.h);
+    const argument = bVal === 1 ? inner : (prob.h.p === 0 ? `${fmtB(prob.b)}x` : `${fmtB(prob.b)}(${inner})`);
+    return `y = ${fmtAmpCoeff(prob.a)}${fnName}(${argument})${fmtOuterK(prob.k)}`;
+  }
+
+  function buildQuestionsHTML() {
+    return `<ol>
+      <li>Amplitude, คาบ (Period), เฟสชิฟต์ (Phase Shift), การเลื่อนแนวตั้ง</li>
+      <li>สมการเส้นกึ่งกลาง (Midline)</li>
+      <li>ร่างกราฟในช่วง −2π ถึง 2π</li>
+    </ol>`;
+  }
+
+  function fmtAnswerCard(prob) {
+    const amp = Math.abs(prob.a);
+    const periodStr = fmtPi(prob.period);
+    const phaseStr = prob.h.p === 0 ? "0 (ไม่เลื่อน)" : fmtPi(prob.h);
+    return `
+      <div class="answer-row"><b>1. Amplitude:</b> |a| = ${amp}</div>
+      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>Period:</b> ${periodStr}</div>
+      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เฟสชิฟต์ (h):</b> ${phaseStr}</div>
+      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เลื่อนแนวตั้ง (k):</b> ${fmtNumSigned(prob.k)}</div>
+      <div class="answer-row"><b>2. เส้นกึ่งกลาง (Midline):</b> y = ${fmtNumSigned(prob.k)}</div>
+      <div class="answer-row"><b>3. กราฟ:</b> ดูรูปด้านบน (เส้นประคือเส้นกึ่งกลาง)</div>
+    `;
+  }
+
+  /* =========================================================
+     5. GRAPH — fixed domain [-2pi, 2pi], y-axis scaled to fit
+     amplitude + vertical shift, x-axis labeled in units of pi,
+     midline drawn as a dashed reference line.
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", CURVE_COLOR = "#FFFFFF", MID_COLOR = "#F9E795";
+
+  function evalFn(prob, x) {
+    const bv = fmtBVal(prob.b), hv = fmtPiVal(prob.h);
+    const inner = bv * (x - hv);
+    return prob.a * (prob.fn === "sin" ? Math.sin(inner) : Math.cos(inner)) + prob.k;
+  }
+
+  function fmtFactoredFormPlain(prob) {
+    // plain-text (no HTML) version of the factored form, for SVG <text> labels
+    const fnName = prob.fn === "sin" ? "sin" : "cos";
+    const bVal = fmtBVal(prob.b);
+    const bStr = prob.b.q === 1 ? `${prob.b.p}` : `${prob.b.p}/${prob.b.q}`;
+    const hStr = prob.h.p === 0 ? "" : (prob.h.p > 0
+      ? ` \u2212 ${fmtPiPlain(prob.h)}`
+      : ` + ${fmtPiPlain({ p: -prob.h.p, q: prob.h.q })}`);
+    const inner = "x" + hStr;
+    const argument = bVal === 1 ? inner : (prob.h.p === 0 ? `${bStr}x` : `${bStr}(${inner})`);
+    const aCoeff = prob.a === 1 ? "" : prob.a === -1 ? "\u2212" : (prob.a < 0 ? `\u2212${Math.abs(prob.a)}` : `${prob.a}`);
+    const kStr = prob.k === 0 ? "" : (prob.k > 0 ? ` + ${prob.k}` : ` \u2212 ${Math.abs(prob.k)}`);
+    return `y = ${aCoeff}${fnName}(${argument})${kStr}`;
+  }
+  function fmtPiPlain(frac) {
+    if (frac.p === 0) return "0";
+    const sign = frac.p < 0 ? "\u2212" : "";
+    const ap = Math.abs(frac.p);
+    const coeffStr = ap === 1 ? "" : `${ap}`;
+    return frac.q === 1 ? `${sign}${coeffStr}\u03c0` : `${sign}${coeffStr}\u03c0/${frac.q}`;
+  }
+
+  function buildGraph(prob) {
+    const W = 460, H = 320, padL = 34, padR = 14, padT = 34, padB = 28;
+    const xLo = -2 * Math.PI, xHi = 2 * Math.PI;
+    const amp = Math.abs(prob.a);
+    let yLo = prob.k - amp, yHi = prob.k + amp;
+    const yPad = amp * 0.25 || 1;
+    yLo -= yPad; yHi += yPad;
+
+    const scaleX = (W - padL - padR) / (xHi - xLo);
+    const scaleY = (H - padT - padB) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPy = (y) => H - padB - (y - yLo) * scaleY;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+    // equation label (factored form) at the top
+    svg += `<text x="${W / 2}" y="18" font-size="15" fill="${MID_COLOR}" font-weight="700" text-anchor="middle" font-family="Cambria, Georgia, serif">${fmtFactoredFormPlain(prob)}</text>`;
+
+    // x-axis (y=0, if in view) and y-axis (x=0)
+    if (yLo < 0 && yHi > 0) svg += `<line x1="${toPx(xLo)}" y1="${toPy(0)}" x2="${toPx(xHi)}" y2="${toPy(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    svg += `<line x1="${toPx(0)}" y1="${toPy(yHi)}" x2="${toPx(0)}" y2="${toPy(yLo)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+
+    // x tick marks/labels at multiples of pi/2
+    for (let m = -4; m <= 4; m++) {
+      const xv = m * Math.PI / 2;
+      if (xv < xLo - 1e-9 || xv > xHi + 1e-9) continue;
+      const px = toPx(xv);
+      svg += `<line x1="${px.toFixed(1)}" y1="${(toPy(0) - 3).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(toPy(0) + 3).toFixed(1)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+      if (m % 2 === 0 && m !== 0) {
+        const label = m === 0 ? "0" : (m / 2 === 1 ? "\u03c0" : m / 2 === -1 ? "\u2212\u03c0" : `${m / 2}\u03c0`);
+        svg += `<text x="${px.toFixed(1)}" y="${(toPy(0) + 16).toFixed(1)}" font-size="11" fill="${AXIS_COLOR}" text-anchor="middle" font-family="Calibri, sans-serif">${label}</text>`;
+      }
+    }
+
+    // midline (dashed)
+    svg += `<line x1="${toPx(xLo)}" y1="${toPy(prob.k).toFixed(1)}" x2="${toPx(xHi)}" y2="${toPy(prob.k).toFixed(1)}" stroke="${MID_COLOR}" stroke-width="1.3" stroke-dasharray="5 4"/>`;
+
+    // "y=k" label on the midline: prefer the right edge, but swap to the left edge if
+    // the curve passes too close to the midline there (would overlap the label)
+    const curveNearRight = Math.abs(evalFn(prob, xHi - 0.3) - prob.k) < amp * 0.35;
+    const midLabelX = curveNearRight ? toPx(xLo) + 4 : toPx(xHi) - 4;
+    const midLabelAnchor = curveNearRight ? "start" : "end";
+    svg += `<text x="${midLabelX.toFixed(1)}" y="${(toPy(prob.k) - 6).toFixed(1)}" font-size="12" fill="${MID_COLOR}" font-weight="700" text-anchor="${midLabelAnchor}" font-family="Calibri, sans-serif">y = ${fmtNumSigned(prob.k)}</text>`;
+
+    // curve
+    const steps = 200;
+    let d = "";
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      const px = toPx(x), py = toPy(evalFn(prob, x));
+      d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+    }
+    svg += `<path d="${d}" fill="none" stroke="${CURVE_COLOR}" stroke-width="2.4"/>`;
+
+    svg += "</svg>";
+    return svg;
+  }
+
+  /* =========================================================
+     6. DISPLAY / EVENTS
+     ========================================================= */
+  const exprEl = document.getElementById("exprEl");
+  const questionsList = document.getElementById("questionsList");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const enableSin = document.getElementById("enableSin");
+  const enableCos = document.getElementById("enableCos");
+
+  let current = null;
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    questionsList.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "วิเคราะห์กราฟ แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    questionsList.style.display = "none";
+    answerWrap.style.display = "";
+    graphBox.innerHTML = buildGraph(current);
+    answerCard.innerHTML = fmtAnswerCard(current);
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      exprEl.innerHTML = fmtProblem(current);
+      questionsList.innerHTML = buildQuestionsHTML();
+      displayProblem();
+      exprEl.classList.remove("swap"); questionsList.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const els = showingAnswer ? [answerWrap] : [exprEl, questionsList];
+    els.forEach(el => el.classList.add("swap"));
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? [answerWrap] : [exprEl, questionsList]).forEach(el => el.classList.remove("swap"));
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    enableSin.checked = cfg.enableSin;
+    enableCos.checked = cfg.enableCos;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    if (!enableSin.checked && !enableCos.checked) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 แบบ";
+      return;
+    }
+    cfg = { enableSin: enableSin.checked, enableCos: enableCos.checked };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  exprEl.innerHTML = fmtProblem(current);
+  questionsList.innerHTML = buildQuestionsHTML();
+  displayProblem();
+</script>
+</body>
+</html>

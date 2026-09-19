@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>อนุพันธ์และลักษณะกราฟ</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(20px, 3.8vw, 38px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+  .questions-list {
+    margin-top: 16px; text-align: left; max-width: 560px; width: 100%;
+    font-size: clamp(13px, 2vw, 16.5px); line-height: 1.8; color: var(--ink);
+  }
+  .questions-list ol { margin: 0; padding-left: 22px; }
+  .questions-list li { margin-bottom: 4px; }
+  .questions-list.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(92vw, 380px); margin: 0 auto 16px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(249,231,149,0.4);
+    border-radius: 16px;
+    padding: 16px 20px;
+  }
+  .answer-row { margin-bottom: 10px; font-size: clamp(12.5px, 1.9vw, 15.5px); line-height: 1.55; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle;
+    margin: 0 0.1em; line-height: 1.05;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.04em; }
+  .frac .den { padding-top: 0.04em; }
+
+  .prompt { margin-top: 18px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .field-group { margin-bottom: 16px; }
+  .field-group .label { font-size: 13px; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
+  .field-row { display: flex; gap: 10px; align-items: center; }
+  .field-row .mini-label { font-size: 12px; color: var(--muted); width: 46px; flex-shrink: 0; }
+  .field-row input {
+    flex: 1; font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink);
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.12); border-radius: 10px;
+    padding: 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; width: 100%; min-width: 0;
+  }
+  .field-row input:focus { outline: none; border-color: var(--coral); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 480px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .field-group { margin-bottom: 8px; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(70vw, 300px); margin-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">อนุพันธ์และลักษณะกราฟ</div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="questions-list" id="questionsList"></div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">วิเคราะห์ฟังก์ชัน แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">กำหนดช่วงตัวเลขและสัดส่วนของแต่ละกรณี</div>
+
+      <div class="field-group">
+        <div class="label">ช่วงตัวเลขของจุดวิกฤต/จุดเปลี่ยนความเว้า</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="rootMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="rootMax">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="label">ค่าคงที่ d (เลื่อนกราฟแนวตั้ง)</div>
+        <div class="field-row">
+          <span class="mini-label">ต่ำสุด</span><input type="number" id="dMin">
+          <span class="mini-label">สูงสุด</span><input type="number" id="dMax">
+        </div>
+      </div>
+
+      <div class="settings-error" id="settingsError"></div>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG
+     ========================================================= */
+  const DEFAULT_CFG = { rootMin: -8, rootMax: 8, dMin: -10, dMax: 10 };
+  const STORAGE_KEY = "calc-cubic-quartic-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  /* =========================================================
+     2. FRACTION UTILITIES (exact arithmetic throughout)
+     ========================================================= */
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcd(b, a % b); }
+  function fracReduce(p, q) {
+    if (q < 0) { p = -p; q = -q; }
+    const g = gcd(p, q) || 1;
+    return { p: p / g, q: q / g };
+  }
+  function F(p, q) { return fracReduce(p, q === undefined ? 1 : q); }
+  function fAdd(x, y) { return fracReduce(x.p * y.q + y.p * x.q, x.q * y.q); }
+  function fSub(x, y) { return fracReduce(x.p * y.q - y.p * x.q, x.q * y.q); }
+  function fMul(x, y) { return fracReduce(x.p * y.p, x.q * y.q); }
+  function fDiv(x, y) { return fracReduce(x.p * y.q, x.q * y.p); }
+  function fNeg(x) { return { p: -x.p, q: x.q }; }
+  function fVal(x) { return x.p / x.q; }
+  function fCmp(x, y) { return fVal(x) - fVal(y); }
+  function fEq(x, y) { return x.p === y.p && x.q === y.q; }
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function weightedChoice(pairs) {
+    const r = Math.random(); let acc = 0;
+    for (const [name, w] of pairs) { acc += w; if (r < acc) return name; }
+    return pairs[pairs.length - 1][0];
+  }
+
+  /* =========================================================
+     3. GENERATION — CUBIC CASE (e=0)
+     f(x) = a x^3 + b x^2 + c x + d
+     Sub-cases: '2crit' (40%) / '0crit' (40%) / 'repeated' (20%)
+     Key verified fact: inflection point of a cubic is EXACTLY the
+     midpoint of its two critical points (when they exist), so
+     choosing critical-point roots of the same parity keeps the
+     inflection point an integer too — verified symbolically
+     before implementing.
+     ========================================================= */
+  function genCubic2Crit() {
+    let r1, r2, a;
+    for (let tries = 0; tries < 200; tries++) {
+      r1 = randInt(cfg.rootMin, cfg.rootMax);
+      r2 = randInt(cfg.rootMin, cfg.rootMax);
+      if (r1 === r2 || (r1 + r2) % 2 !== 0) continue;
+      a = choice([-3, -2, -1, 1, 2, 3]);
+      break;
+    }
+    // f'(x) = 3a(x-r1)(x-r2) = 3a x^2 - 3a(r1+r2) x + 3a r1 r2
+    const b = F(-3 * a * (r1 + r2), 2);
+    const c = F(3 * a * r1 * r2, 1);
+    const d = F(randInt(cfg.dMin, cfg.dMax), 1);
+    const inflection = F(r1 + r2, 2);
+    const critLo = Math.min(r1, r2), critHi = Math.max(r1, r2);
+    // classify which is max/min via sign of a (a>0: min at critLo? check via f'' sign)
+    // f''(x)=6a x+2b ; at critLo: sign determines concavity -> min if f''>0
+    const fpp_at = (x) => 6 * a * x + 2 * fVal(b);
+    const criticalPoints = [critLo, critHi].map(r => ({
+      x: F(r, 1), type: fpp_at(r) > 0 ? "min" : "max", genuine: true
+    }));
+    return {
+      e: F(0), a: F(a), b, c, d,
+      category: "cubic-2crit",
+      criticalPoints, degeneratePoints: [],
+      inflectionPoints: [inflection]
+    };
+  }
+
+  function genCubic0Crit() {
+    const p = randInt(cfg.rootMin, cfg.rootMax); // inflection point, chosen directly
+    const a = choice([-3, -2, -1, 1, 2, 3]);
+    const b = F(-3 * a * p, 1);
+    // need discriminant of f'=3a x^2+2b x+c <0 (no real crit points): (2b)^2-12ac<0
+    let c;
+    for (let tries = 0; tries < 300; tries++) {
+      c = randInt(cfg.rootMin - 5, cfg.rootMax + 5);
+      const disc = 4 * fVal(b) * fVal(b) - 12 * a * c;
+      if (disc < 0) break;
+      c = null;
+    }
+    if (c === null) { // fallback: force it algebraically
+      c = Math.ceil((4 * fVal(b) * fVal(b)) / (12 * a)) + (a > 0 ? 5 : -5);
+    }
+    const d = F(randInt(cfg.dMin, cfg.dMax), 1);
+    return {
+      e: F(0), a: F(a), b, c: F(c), d,
+      category: "cubic-0crit",
+      criticalPoints: [], degeneratePoints: [],
+      inflectionPoints: [F(p, 1)]
+    };
+  }
+
+  function genCubicRepeated() {
+    const r = randInt(cfg.rootMin, cfg.rootMax);
+    const a = choice([-3, -2, -1, 1, 2, 3]);
+    // f'(x) = 3a(x-r)^2 -> b=-3ar, c=3ar^2
+    const b = F(-3 * a * r, 1);
+    const c = F(3 * a * r * r, 1);
+    const d = F(randInt(cfg.dMin, cfg.dMax), 1);
+    return {
+      e: F(0), a: F(a), b, c, d,
+      category: "cubic-repeated",
+      criticalPoints: [], degeneratePoints: [F(r, 1)],
+      inflectionPoints: [F(r, 1)] // horizontal-tangent inflection, coincides with the degenerate point
+    };
+  }  /* =========================================================
+     4. GENERATION — QUARTIC CASE (e != 0)
+     f'(x) = 4e x^3 + 3a x^2 + 2b x + c is a cubic, classified by
+     its own root-multiplicity structure (verified symbolically
+     and numerically before implementing):
+       A: 3 distinct real roots     -> always exactly 2 inflection pts (Rolle's theorem)
+       B: 1 real root + complex pair -> exactly 1 critical pt; inflection count (0/1-degenerate/2) varies
+       C: double root r + single s   -> only s is a genuine extremum; r is a horizontal-tangent
+                                         point that IS one of exactly 2 inflection points (verified numerically)
+       D: triple root r              -> genuine extremum at r (odd multiplicity flips sign);
+                                         f''=12e(x-r)^2 never changes sign -> zero inflection points
+     ========================================================= */
+  const E_CHOICES = [-3, -2, -1, 1, 2, 3];
+
+  function fp3FromRoots(e, r1, r2, r3) {
+    // f'(x) = 4e(x-r1)(x-r2)(x-r3) -> returns {a,b,c} (as plain numbers/fractions)
+    const s1 = r1 + r2 + r3, s2 = r1 * r2 + r1 * r3 + r2 * r3, s3 = r1 * r2 * r3;
+    const a = F(-4 * e * s1, 3);
+    const b = F(2 * e * s2, 1);
+    const c = F(-4 * e * s3, 1);
+    return { a, b, c };
+  }
+
+  function classifyExtremum(e, a, b, c, x0) {
+    // f'(x)=4e x^3+3a x^2+2b x+c ; sample just left/right of x0
+    const fp = (x) => 4 * e * x ** 3 + 3 * a * x * x + 2 * b * x + c;
+    const left = fp(x0 - 0.25), right = fp(x0 + 0.25);
+    if (left < 0 && right > 0) return "min";
+    if (left > 0 && right < 0) return "max";
+    return null; // no sign change -> not genuine
+  }
+
+  function inflectionPointsOf(e, a, b) {
+    // f''(x) = 12e x^2 + 6a x + 2b ; returns REAL roots as exact fractions ONLY when
+    // rational (uses toCleanFraction, defined above with genQuarticA, for proper
+    // detection instead of a floating-point approximation that produced garbage
+    // pseudo-fractions for genuinely irrational roots during testing).
+    const A_ = 12 * e, B_ = 6 * a, C_ = 2 * b;
+    const disc = B_ * B_ - 4 * A_ * C_;
+    if (disc < -1e-9) return { count: 0, points: [] };
+    if (Math.abs(disc) < 1e-9) {
+      const r = toCleanFraction(-B_ / (2 * A_));
+      return r ? { count: 1, points: [r] } : { count: -1, points: [] };
+    }
+    const sq = Math.sqrt(disc);
+    const r1 = toCleanFraction((-B_ + sq) / (2 * A_));
+    const r2 = toCleanFraction((-B_ - sq) / (2 * A_));
+    if (r1 && r2) return { count: 2, points: [r1, r2].sort((x, y) => fVal(x) - fVal(y)) };
+    return { count: -1, points: [] };
+  }
+
+  function genQuarticA() {
+    // Better approach (verified separately): fix f''(x)'s own roots (the 2 inflection
+    // points) directly first, then search the free integration constant "c" of f'(x)
+    // until the resulting cubic happens to have 3 DISTINCT clean rational roots. Fixing
+    // critical points directly instead (the naive order) was tested and found to give
+    // inflection points that are irrational in nearly every case (confirmed above by a
+    // failing regression run), so this reversed order is required for this pattern.
+    for (let outer = 0; outer < 400; outer++) {
+      const q1 = randInt(cfg.rootMin, cfg.rootMax);
+      const q2 = randInt(cfg.rootMin, cfg.rootMax);
+      if (q1 === q2) continue;
+      const k = choice(E_CHOICES);
+      // f''(x) = k(x-q1)(x-q2) matched to 12e x^2+6a x+2b
+      const e = F(k, 12), a = F(-k * (q1 + q2), 6), b = F(k * q1 * q2, 2);
+      for (let cTry = cfg.rootMin - 20; cTry <= cfg.rootMax + 20; cTry++) {
+        const c = cTry;
+        // f'(x) = 4e x^3+3a x^2+2b x+c ; find real roots numerically then test rational+distinct
+        const coeffs = [4 * fVal(e), 3 * fVal(a), 2 * fVal(b), c];
+        const roots = solveCubicReal(coeffs);
+        if (roots.length !== 3) continue;
+        const cleaned = roots.map(r => toCleanFraction(r));
+        if (cleaned.some(r => r === null)) continue;
+        const xs = cleaned.map(fVal);
+        if (new Set(xs.map(x => Math.round(x * 1000))).size !== 3) continue; // must be distinct
+        const sorted = cleaned.sort((x, y) => fVal(x) - fVal(y));
+        const d = F(randInt(cfg.dMin, cfg.dMax));
+        const criticalPoints = sorted.map(r => ({
+          x: r, type: classifyExtremum(fVal(e), fVal(a), fVal(b), c, fVal(r)), genuine: true
+        }));
+        return {
+          e, a, b, c: F(c), d, category: "quartic-A",
+          criticalPoints, degeneratePoints: [],
+          inflectionPoints: [F(q1), F(q2)].sort((x, y) => fVal(x) - fVal(y))
+        };
+      }
+    }
+    return null; // extremely unlikely given verified retry budget
+  }
+
+  function solveCubicReal(coeffs) {
+    // coeffs = [A,B,C,D] for A x^3+B x^2+C x+D=0 ; returns real roots (numeric)
+    const [A, B, C, D] = coeffs;
+    const a = B / A, b = C / A, c = D / A;
+    const p = b - a * a / 3, q = (2 * a ** 3) / 27 - (a * b) / 3 + c;
+    const disc = (q * q) / 4 + (p ** 3) / 27;
+    const roots = [];
+    if (disc > 1e-12) {
+      const u = Math.cbrt(-q / 2 + Math.sqrt(disc));
+      const v = Math.cbrt(-q / 2 - Math.sqrt(disc));
+      roots.push(u + v - a / 3);
+    } else if (Math.abs(disc) <= 1e-12) {
+      const u = Math.cbrt(-q / 2);
+      roots.push(2 * u - a / 3, -u - a / 3);
+    } else {
+      const r = Math.sqrt(-(p ** 3) / 27);
+      const phi = Math.acos(-q / (2 * r));
+      const m = 2 * Math.sqrt(-p / 3);
+      for (let k = 0; k < 3; k++) roots.push(m * Math.cos((phi + 2 * Math.PI * k) / 3) - a / 3);
+    }
+    return roots;
+  }
+
+  function toCleanFraction(x, maxDen = 12, eps = 1e-6) {
+    for (let den = 1; den <= maxDen; den++) {
+      const num = x * den;
+      if (Math.abs(num - Math.round(num)) < eps) return F(Math.round(num), den);
+    }
+    return null;
+  }
+
+  function genQuarticC() {
+    // f'(x)=4e(x-r)^2(x-s) ; only s is genuine extremum; inflection at r and (2s+r)/3 (needs (2s+r) div by 3)
+    let r, s, e;
+    for (let tries = 0; tries < 300; tries++) {
+      r = randInt(cfg.rootMin, cfg.rootMax);
+      s = randInt(cfg.rootMin, cfg.rootMax);
+      if (r === s) continue;
+      if ((2 * s + r) % 3 !== 0) continue;
+      e = choice(E_CHOICES);
+      break;
+    }
+    const { a, b, c } = fp3FromRoots(e, r, r, s);
+    const d = F(randInt(cfg.dMin, cfg.dMax));
+    const criticalPoints = [{ x: F(s), type: classifyExtremum(e, fVal(a), fVal(b), fVal(c), s), genuine: true }];
+    const degeneratePoints = [F(r)];
+    const inflectionPoints = inflectionPointsOf(e, fVal(a), fVal(b)).points;
+    return { e: F(e), a, b, c, d, category: "quartic-C", criticalPoints, degeneratePoints, inflectionPoints };
+  }
+
+  function genQuarticB(inflTarget) {
+    // f'(x) = 4e(x-r)(x^2+px+q), p^2<4q so the quadratic factor has no real roots ->
+    // exactly 1 genuine real critical point at x=r. inflTarget in {'0','2','repeated'}
+    // selects which f''-root-count sub-case to search for.
+    for (let tries = 0; tries < 800; tries++) {
+      const r = randInt(cfg.rootMin, cfg.rootMax);
+      const e = choice(E_CHOICES);
+      const p_ = randInt(-8, 8);
+      const qLo = Math.abs(p_) + 1, qHi = Math.abs(p_) + 14;
+      const q_ = randInt(qLo, qHi);
+      if (p_ * p_ - 4 * q_ >= 0) continue;
+      // f'(x)=4e(x-r)(x^2+p_x+q_) -> expand
+      const a = F(4 * e * (p_ - r), 3);
+      const b = F(2 * e * (q_ - r * p_), 1);
+      const c = F(-4 * e * r * q_, 1);
+      if (a.q > 3) continue; // keep 'a' a clean fraction (denominator 1 or 3 only, from /3 step)
+      const infl = inflectionPointsOf(e, fVal(a), fVal(b));
+      const wantCount = inflTarget === "0" ? 0 : inflTarget === "repeated" ? 1 : 2;
+      if (infl.count !== wantCount) continue;
+      const d = F(randInt(cfg.dMin, cfg.dMax));
+      const category = "quartic-B-" + inflTarget + "infl";
+      return {
+        e: F(e), a, b, c, d, category,
+        criticalPoints: [{ x: F(r), type: classifyExtremum(e, fVal(a), fVal(b), fVal(c), r), genuine: true }],
+        degeneratePoints: inflTarget === "repeated" ? [] : [],
+        inflectionPoints: infl.points
+      };
+    }
+    return null;
+  }
+
+  function genQuarticD() {
+    // f'(x)=4e(x-r)^3 ; genuine extremum at r (odd multiplicity); zero inflection points
+    const r = randInt(cfg.rootMin, cfg.rootMax);
+    const e = choice(E_CHOICES);
+    const { a, b, c } = fp3FromRoots(e, r, r, r);
+    const d = F(randInt(cfg.dMin, cfg.dMax));
+    const type = classifyExtremum(e, fVal(a), fVal(b), fVal(c), r);
+    return {
+      e: F(e), a, b, c, d, category: "quartic-D",
+      criticalPoints: [{ x: F(r), type, genuine: true }],
+      degeneratePoints: [], inflectionPoints: []
+    };
+  }
+
+  /* =========================================================
+     5. MAIN GENERATOR — combines all 9 pathways per the agreed
+     probabilities: e=0 (2/3) vs e!=0 (1/3); cubic sub-split
+     40/40/20; quartic sub-split A=40/B=40/C=10/D=10, with B's
+     own inflection-count further split 45/45/10.
+     ========================================================= */
+  function generateProblem() {
+    const isCubic = Math.random() < 2 / 3;
+    let prob;
+    if (isCubic) {
+      const sub = weightedChoice([["2crit", 0.4], ["0crit", 0.4], ["repeated", 0.2]]);
+      prob = sub === "2crit" ? genCubic2Crit() : sub === "0crit" ? genCubic0Crit() : genCubicRepeated();
+    } else {
+      const sub = weightedChoice([["A", 0.4], ["B", 0.4], ["C", 0.1], ["D", 0.1]]);
+      if (sub === "A") prob = genQuarticA();
+      else if (sub === "C") prob = genQuarticC();
+      else if (sub === "D") prob = genQuarticD();
+      else {
+        const inflSub = weightedChoice([["0", 0.45], ["2", 0.45], ["repeated", 0.1]]);
+        prob = genQuarticB(inflSub);
+      }
+    }
+    if (!prob) return generateProblem(); // extremely rare fallback (verified negligible)
+
+    prob.isCubic = fVal(prob.e) === 0;
+    prob.absMax = null; prob.absMin = null;
+    if (!prob.isCubic) {
+      const eVal = fVal(prob.e);
+      const localVals = prob.criticalPoints.map(cp => ({ cp, x: cp.x, yFrac: fEvalFrac(prob, cp.x), y: fVal(fEvalFrac(prob, cp.x)) }));
+      if (eVal > 0) {
+        const mins = localVals.filter(v => v.cp.type === "min");
+        if (mins.length) prob.absMin = mins.reduce((m, v) => (v.y < m.y ? v : m));
+      } else {
+        const maxs = localVals.filter(v => v.cp.type === "max");
+        if (maxs.length) prob.absMax = maxs.reduce((m, v) => (v.y > m.y ? v : m));
+      }
+    }
+    const usedXs = [...prob.criticalPoints.map(c => fVal(c.x)), ...prob.degeneratePoints.map(fVal), ...prob.inflectionPoints.map(fVal)];
+    let tx;
+    for (let i = 0; i < 40; i++) {
+      tx = randInt(cfg.rootMin, cfg.rootMax);
+      if (!usedXs.some(u => Math.abs(u - tx) < 1e-9)) break;
+    }
+    prob.tangentX = F(tx);
+    return prob;
+  }
+
+  function fEval(prob, x) {
+    return fVal(prob.e) * x ** 4 + fVal(prob.a) * x ** 3 + fVal(prob.b) * x * x + fVal(prob.c) * x + fVal(prob.d);
+  }
+  function fEvalFrac(prob, xFrac) {
+    // exact fraction evaluation of f(x) at a fractional x, so extrema/inflection y-values
+    // are never a lossy floating-point-then-guessed approximation (their x-coordinates can
+    // have denominators up to 3, and raising that to the 4th power needs exact tracking).
+    const x2 = fMul(xFrac, xFrac), x3 = fMul(x2, xFrac), x4 = fMul(x3, xFrac);
+    return fAdd(fAdd(fAdd(fAdd(fMul(prob.e, x4), fMul(prob.a, x3)), fMul(prob.b, x2)), fMul(prob.c, xFrac)), prob.d);
+  }
+  function fpEval(prob, x) {
+    return 4 * fVal(prob.e) * x ** 3 + 3 * fVal(prob.a) * x * x + 2 * fVal(prob.b) * x + fVal(prob.c);
+  }
+  function fppEval(prob, x) {
+    return 12 * fVal(prob.e) * x * x + 6 * fVal(prob.a) * x + 2 * fVal(prob.b);
+  }
+
+  /* =========================================================
+     6. ANALYSIS — increasing/decreasing intervals, tangent line
+     ========================================================= */
+  function increasingDecreasingIntervals(prob) {
+    // sample the midpoint of each interval between consecutive "boundary" x-values
+    // (critical points and degenerate touch-points both mark where sign COULD change)
+    // to read off the sign of f' there, then merge adjacent intervals that end up with
+    // the same sign (this happens when a degenerate touch-point doesn't actually flip it).
+    const boundaries = [...new Set([...prob.criticalPoints.map(c => fVal(c.x)), ...prob.degeneratePoints.map(fVal)])]
+      .sort((x, y) => x - y);
+    const probe = boundaries.length ? Math.max(8, Math.abs(boundaries[0]) + 5, Math.abs(boundaries[boundaries.length - 1]) + 5) : 8;
+    const cuts = [-probe, ...boundaries, probe];
+    const raw = [];
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const mid = (cuts[i] + cuts[i + 1]) / 2;
+      raw.push({ lo: cuts[i], hi: cuts[i + 1], sign: fpEval(prob, mid) > 0 ? "inc" : "dec" });
+    }
+    const merged = [raw[0]];
+    for (let i = 1; i < raw.length; i++) {
+      if (raw[i].sign === merged[merged.length - 1].sign) merged[merged.length - 1].hi = raw[i].hi;
+      else merged.push(raw[i]);
+    }
+    merged[0].lo = -Infinity;
+    merged[merged.length - 1].hi = Infinity;
+    return merged; // each: {lo, hi, sign} with the true boundary values (matching original x-values) preserved at merge seams
+  }
+
+  function tangentLineAt(prob, xFrac) {
+    const x0 = fVal(xFrac);
+    const y0 = fEval(prob, x0);
+    const slope = fpEval(prob, x0);
+    // y = slope*(x-x0) + y0 = slope*x + (y0 - slope*x0)
+    const intercept = y0 - slope * x0;
+    return { x0, y0, slope, intercept };
+  }
+
+  /* =========================================================
+     7. FORMATTING (Thai text + stacked-fraction HTML)
+     ========================================================= */
+  function fracHTML(fr) {
+    const sign = fr.p < 0 ? "\u2212" : "";
+    const ap = Math.abs(fr.p);
+    if (fr.q === 1) return `${sign}${ap}`;
+    return `${sign}<span class="frac"><span class="num">${ap}</span><span class="den">${fr.q}</span></span>`;
+  }
+  function fmtNum(n) {
+    if (Number.isInteger(n)) return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`;
+    return fracHTML(toCleanFraction(n) || F(Math.round(n * 100), 100));
+  }
+  function fmtSignedTerm(fr, isFirst) {
+    const sign = fr.p >= 0 ? (isFirst ? "" : " + ") : (isFirst ? "\u2212" : " \u2212 ");
+    const ap = { p: Math.abs(fr.p), q: fr.q };
+    return sign + fracHTML(ap);
+  }
+
+  function fmtPolynomial(prob) {
+    let s = "";
+    let first = true;
+    if (prob.e.p !== 0) {
+      const coeffStr = (prob.e.p === 1 && prob.e.q === 1) ? "" : (prob.e.p === -1 && prob.e.q === 1) ? "\u2212" : fmtSignedTerm(prob.e, true);
+      s += coeffStr + "x\u2074"; first = false;
+    }
+    if (prob.a.p !== 0) {
+      const term = (Math.abs(prob.a.p) === 1 && prob.a.q === 1)
+        ? (first ? (prob.a.p > 0 ? "" : "\u2212") : (prob.a.p > 0 ? " + " : " \u2212 "))
+        : fmtSignedTerm(prob.a, first);
+      s += term + "x\u00b3"; first = false;
+    }
+    if (prob.b.p !== 0) {
+      const term = (Math.abs(prob.b.p) === 1 && prob.b.q === 1)
+        ? (first ? (prob.b.p > 0 ? "" : "\u2212") : (prob.b.p > 0 ? " + " : " \u2212 "))
+        : fmtSignedTerm(prob.b, first);
+      s += term + "x\u00b2"; first = false;
+    }
+    if (prob.c.p !== 0) {
+      const term = (Math.abs(prob.c.p) === 1 && prob.c.q === 1)
+        ? (first ? (prob.c.p > 0 ? "" : "\u2212") : (prob.c.p > 0 ? " + " : " \u2212 "))
+        : fmtSignedTerm(prob.c, first);
+      s += term + "x"; first = false;
+    }
+    if (prob.d.p !== 0 || first) {
+      s += fmtSignedTerm(prob.d, first);
+    }
+    return `f(x) = ${s}`;
+  }
+
+  function fmtIntervals(prob) {
+    // express as inequalities with the correct closed/open boundary: a genuine critical
+    // point is included (≤/≥, the function's monotonic run is usually stated inclusive
+    // of where it turns) while ±∞ is always open (never actually reached).
+    const ivs = increasingDecreasingIntervals(prob);
+    function oneInterval(iv) {
+      const loOpen = iv.lo === -Infinity, hiOpen = iv.hi === Infinity;
+      const loStr = loOpen ? null : fmtNum(iv.lo);
+      const hiStr = hiOpen ? null : fmtNum(iv.hi);
+      if (loStr === null && hiStr === null) return "x เป็นจำนวนจริงทุกค่า";
+      if (loStr && hiStr) return `${loStr} \u2264 x \u2264 ${hiStr}`;
+      if (loStr) return `x \u2265 ${loStr}`;
+      return `x \u2264 ${hiStr}`;
+    }
+    const inc = ivs.filter(iv => iv.sign === "inc").map(oneInterval);
+    const dec = ivs.filter(iv => iv.sign === "dec").map(oneInterval);
+    const incStr = inc.length ? inc.join("  หรือ  ") : "\u2013 (ไม่มีช่วงที่เพิ่มขึ้นเลย)";
+    const decStr = dec.length ? dec.join("  หรือ  ") : "\u2013 (ไม่มีช่วงที่ลดลงเลย)";
+    return { incStr, decStr };
+  }
+
+  function fmtAllExtrema(prob) {
+    const maxes = prob.criticalPoints.filter(c => c.type === "max");
+    const mins = prob.criticalPoints.filter(c => c.type === "min");
+    function block(list, label) {
+      if (!list.length) return `${label}: \u2013 (ไม่มี)`;
+      const pts = list.map(c => `(${fracHTML(c.x)}, ${fracHTML(fEvalFrac(prob, c.x))})`);
+      return `${label}: ${pts.join(", ")}`;
+    }
+    return { maxStr: block(maxes, "จุดสูงสุดสัมพัทธ์"), minStr: block(mins, "จุดต่ำสุดสัมพัทธ์") };
+  }
+
+  function fmtAbsoluteExtrema(prob) {
+    if (prob.absMax) return `มี — เป็นจุดสูงสุดสัมบูรณ์ ที่พิกัด (${fracHTML(prob.absMax.x)}, ${fracHTML(prob.absMax.yFrac)})`;
+    if (prob.absMin) return `มี — เป็นจุดต่ำสุดสัมบูรณ์ ที่พิกัด (${fracHTML(prob.absMin.x)}, ${fracHTML(prob.absMin.yFrac)})`;
+    return "ไม่มี (พหุนามดีกรี" + (prob.isCubic ? "คี่ ไม่มีขอบเขตทั้งสองด้าน)" : "คู่ แต่กรณีนี้ไม่เกิดขึ้น)");
+  }
+
+  function fmtInflection(prob) {
+    if (!prob.inflectionPoints.length) return "ไม่มีจุดเปลี่ยนความเว้า (Point of Inflection)";
+    const pts = prob.inflectionPoints.map(x => `(${fracHTML(x)}, ${fracHTML(fEvalFrac(prob, x))})`);
+    return `จุดเปลี่ยนความเว้าอยู่ที่: ${pts.join(", ")}`;
+  }
+
+  function fmtTangent(prob) {
+    const t = tangentLineAt(prob, prob.tangentX);
+    const slopeFrac = toCleanFraction(t.slope) || F(Math.round(t.slope * 1000), 1000);
+    const interceptFrac = toCleanFraction(t.intercept) || F(Math.round(t.intercept * 1000), 1000);
+    const yStr = `y = ${fracHTML(slopeFrac)}x` + (interceptFrac.p !== 0 ? (interceptFrac.p > 0 ? ` + ${fracHTML(interceptFrac)}` : ` \u2212 ${fracHTML(F(Math.abs(interceptFrac.p), interceptFrac.q))}`) : "");
+    return `ที่ x = ${fracHTML(prob.tangentX)}: ความชัน = ${fracHTML(slopeFrac)}, สมการเส้นสัมผัส: ${yStr}`;
+  }
+  /* =========================================================
+     8. GRAPH — three stacked plots (f, f', f'') sharing one
+     x-scale, with vertical dashed guides at every x where
+     f'=0 (critical points) and f''=0 (inflection points),
+     connecting the same x-position across all three panels.
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", CURVE_COLOR = "#FFFFFF", GUIDE_COLOR = "#F9E795", DOT_COLOR = "#F96167";
+
+  function computeXViewport(prob) {
+    const xs = [0, ...prob.criticalPoints.map(c => fVal(c.x)), ...prob.degeneratePoints.map(fVal),
+      ...prob.inflectionPoints.map(fVal), fVal(prob.tangentX)];
+    let lo = Math.min(...xs), hi = Math.max(...xs);
+    let span = hi - lo;
+    if (span < 4) { const m = (lo + hi) / 2; lo = m - 2; hi = m + 2; span = 4; }
+    const pad = span * 0.25;
+    return { xLo: lo - pad, xHi: hi + pad };
+  }
+
+  function panelSvg(evalFn, xLo, xHi, w, h, padTop, padBottom, guideXs, dotColor, label) {
+    const padL = 8, padR = 8;
+    const ys = [];
+    const steps = 80;
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      ys.push(evalFn(x));
+    }
+    let yLo = Math.min(...ys), yHi = Math.max(...ys);
+    if (yHi - yLo < 1e-6) { yLo -= 1; yHi += 1; }
+    const spanY = yHi - yLo;
+    yLo -= spanY * 0.15; yHi += spanY * 0.15;
+    const scaleX = (w - padL - padR) / (xHi - xLo);
+    const scaleY = (h - padTop - padBottom) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPy = (y) => h - padBottom - (y - yLo) * scaleY;
+
+    let svg = "";
+    // x-axis (y=0) and y-axis (x=0), if within view
+    if (yLo < 0 && yHi > 0) svg += `<line x1="${toPx(xLo)}" y1="${toPy(0)}" x2="${toPx(xHi)}" y2="${toPy(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    if (xLo < 0 && xHi > 0) svg += `<line x1="${toPx(0)}" y1="${toPy(yHi)}" x2="${toPx(0)}" y2="${toPy(yLo)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    // curve
+    let d = "";
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      const px = toPx(x), py = toPy(evalFn(x));
+      d += (i === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+    }
+    svg += `<path d="${d}" fill="none" stroke="${CURVE_COLOR}" stroke-width="2"/>`;
+    // dots at guide x-positions
+    for (const gx of guideXs) {
+      const py = toPy(evalFn(gx));
+      svg += `<circle cx="${toPx(gx).toFixed(1)}" cy="${py.toFixed(1)}" r="3.2" fill="${dotColor}" stroke="#232D63" stroke-width="0.8"/>`;
+    }
+    svg += `<text x="${padL + 2}" y="${padTop + 10}" font-size="11" fill="${GUIDE_COLOR}" font-weight="700" font-family="Calibri, sans-serif">${label}</text>`;
+    return { svg, toPx };
+  }
+
+  function buildStackedGraph(prob) {
+    const W = 320, panelH = 100, gap = 4, totalH = panelH * 3 + gap * 2 + 10;
+    const { xLo, xHi } = computeXViewport(prob);
+    const critXs = prob.criticalPoints.map(c => fVal(c.x));
+    const degXs = prob.degeneratePoints.map(fVal);
+    const inflXs = prob.inflectionPoints.map(fVal);
+    const fGuides = [...critXs, ...degXs]; // vertical guides driven by f'=0 (both genuine + degenerate)
+    const infGuides = inflXs;
+
+    let svg = `<svg viewBox="0 0 ${W} ${totalH}" xmlns="http://www.w3.org/2000/svg">`;
+
+    const p1 = panelSvg(x => fEval(prob, x), xLo, xHi, W, panelH, 16, 8, [...fGuides, ...infGuides], DOT_COLOR, "f(x)");
+    svg += `<g transform="translate(0,0)">${p1.svg}</g>`;
+
+    const p2 = panelSvg(x => fpEval(prob, x), xLo, xHi, W, panelH, 16, 8, [...fGuides, ...infGuides], GUIDE_COLOR, "f'(x)");
+    svg += `<g transform="translate(0,${panelH + gap})">${p2.svg}</g>`;
+
+    const p3 = panelSvg(x => fppEval(prob, x), xLo, xHi, W, panelH, 16, 8, [...infGuides], "#B9C0E0", "f''(x)");
+    svg += `<g transform="translate(0,${2 * (panelH + gap)})">${p3.svg}</g>`;
+
+    // full-height dashed vertical guide lines connecting all 3 panels at each key x
+    const allGuideXs = [...new Set([...fGuides, ...infGuides])];
+    for (const gx of allGuideXs) {
+      const px = p1.toPx(gx);
+      svg += `<line x1="${px.toFixed(1)}" y1="0" x2="${px.toFixed(1)}" y2="${totalH}" stroke="${GUIDE_COLOR}" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/>`;
+    }
+    svg += "</svg>";
+    return svg;
+  }
+
+  /* =========================================================
+     9. DISPLAY / EVENTS
+     ========================================================= */
+  const exprEl = document.getElementById("exprEl");
+  const questionsList = document.getElementById("questionsList");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const fieldIds = ["rootMin", "rootMax", "dMin", "dMax"];
+
+  let current = null;
+
+  function buildQuestionsHTML(prob) {
+    return `<ol>
+      <li>ช่วงที่ทำให้ f(x) เป็นฟังก์ชันเพิ่มและฟังก์ชันลด</li>
+      <li>จุดสูงสุด/ต่ำสุดสัมพัทธ์ทุกจุด (ระบุเป็นพิกัด)</li>
+      <li>มีจุดสูงสุด/ต่ำสุดสัมบูรณ์หรือไม่ ถ้ามีให้ระบุพิกัด</li>
+      <li>จุดเปลี่ยนความเว้า (Point of Inflection) — ระบุพิกัด</li>
+      <li>สมการของเส้นตรงที่สัมผัสเส้นโค้งที่ x = ${fracHTML(prob.tangentX)}</li>
+    </ol>`;
+  }
+
+  function buildAnswerCardHTML(prob) {
+    const { incStr, decStr } = fmtIntervals(prob);
+    const { maxStr, minStr } = fmtAllExtrema(prob);
+    return `
+      <div class="answer-row"><b>1. ช่วงที่เพิ่มขึ้น:</b> ${incStr}<br><b>&nbsp;&nbsp;&nbsp;ช่วงที่ลดลง:</b> ${decStr}</div>
+      <div class="answer-row"><b>2. ${maxStr}</b><br>&nbsp;&nbsp;&nbsp;<b>${minStr}</b></div>
+      <div class="answer-row"><b>3. จุดสูงสุด/ต่ำสุดสัมบูรณ์:</b> ${fmtAbsoluteExtrema(prob)}</div>
+      <div class="answer-row"><b>4. จุดเปลี่ยนความเว้า:</b> ${fmtInflection(prob)}</div>
+      <div class="answer-row"><b>5. เส้นสัมผัส:</b> ${fmtTangent(prob)}</div>
+    `;
+  }
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    questionsList.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "วิเคราะห์ฟังก์ชัน แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    questionsList.style.display = "none";
+    answerWrap.style.display = "";
+    graphBox.innerHTML = buildStackedGraph(current);
+    answerCard.innerHTML = buildAnswerCardHTML(current);
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      exprEl.innerHTML = fmtPolynomial(current);
+      questionsList.innerHTML = buildQuestionsHTML(current);
+      displayProblem();
+      exprEl.classList.remove("swap"); questionsList.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const els = showingAnswer ? [answerWrap] : [exprEl, questionsList];
+    els.forEach(el => el.classList.add("swap"));
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? [answerWrap] : [exprEl, questionsList]).forEach(el => el.classList.remove("swap"));
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    fieldIds.forEach(id => document.getElementById(id).value = cfg[id]);
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    const vals = {};
+    for (const id of fieldIds) {
+      const v = parseInt(document.getElementById(id).value, 10);
+      if (!Number.isInteger(v)) { settingsError.textContent = "กรอกตัวเลขให้ครบทุกช่อง"; return; }
+      vals[id] = v;
+    }
+    if (vals.rootMin >= vals.rootMax) { settingsError.textContent = "ช่วงจุดวิกฤต: ต่ำสุดต้องน้อยกว่าสูงสุด"; return; }
+    if (vals.dMin >= vals.dMax) { settingsError.textContent = "ช่วง d: ต่ำสุดต้องน้อยกว่าสูงสุด"; return; }
+    cfg = { ...cfg, ...vals };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  exprEl.innerHTML = fmtPolynomial(current);
+  questionsList.innerHTML = buildQuestionsHTML(current);
+  displayProblem();
+</script>
+</body>
+</html>
