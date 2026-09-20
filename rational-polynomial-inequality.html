@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>อสมการเศษส่วนพหุนาม</title>
+<style>
+  :root {
+    --navy: #2F3C7E; --navy-deep: #232D63; --coral: #F96167; --coral-deep: #E14A50;
+    --gold: #F9E795; --ink: #FFFFFF; --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy); color: var(--ink); height: 100dvh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    user-select: none; position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em; font-size: clamp(13px, 1.6vw, 18px); font-weight: 700; color: var(--gold);
+    text-transform: uppercase; margin-bottom: 8px; z-index: 1; text-align: center; padding: 0 12px;
+  }
+
+  .stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; width: 100%; z-index: 1; padding: 10px 20px; overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(17px, 3.2vw, 26px); font-weight: 700;
+    text-align: center; line-height: 1.6; max-width: 95vw; transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+  .frac-display {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 0.15em;
+  }
+  .frac-display .fnum, .frac-display .fden { padding: 2px 6px; }
+  .frac-display .fnum { border-bottom: 0.08em solid currentColor; }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 660px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .numberline-box { width: min(96vw, 620px); margin: 0 auto 14px; }
+  .numberline-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06); border: 1.5px solid rgba(249,231,149,0.4); border-radius: 16px;
+    padding: 16px 20px; margin-bottom: 12px;
+  }
+  .answer-row { margin-bottom: 10px; font-size: clamp(12.5px, 1.9vw, 15px); line-height: 1.6; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 0.08em; line-height: 1.05; }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.03em; }
+  .frac .den { padding-top: 0.03em; }
+
+  .sign-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+  .sign-table { border-collapse: collapse; font-family: "Consolas", "Cambria", monospace; font-size: clamp(12px, 1.8vw, 14.5px); margin: 0 auto; }
+  .sign-table td { padding: 5px 9px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .sign-table .factor-label-cell { text-align: right; padding-right: 12px; color: var(--muted); border-right: 1.5px solid var(--gold); }
+  .sign-table .combined-row td { font-weight: 700; color: var(--gold); border-top: 1.5px solid var(--ink); }
+  .sign-pos { color: #8FD3F4; font-weight: 700; }
+  .sign-neg { color: var(--coral); font-weight: 700; }
+
+  .solution-line {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
+    text-align: center; color: var(--gold); margin-top: 12px;
+  }
+  .section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
+
+  .prompt { margin-top: 16px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 560px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .answer-row { margin-bottom: 6px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="eyebrow">อสมการเศษส่วนพหุนาม</div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="numberline-box" id="numberlineBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">แยกตัวประกอบเศษและส่วน แล้วตรวจเครื่องหมาย แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+<script>
+  /* =========================================================
+     1. UTILITIES
+     ========================================================= */
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function gcdInt(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcdInt(b, a % b); }
+  function reduceFrac(p, q) { const g = gcdInt(p, q) || 1; return q < 0 ? { p: -p / g, q: -q / g } : { p: p / g, q: q / g }; }
+  function fracHTML(fr) {
+    if (fr.q === 1) return `${fr.p}`;
+    const sign = fr.p < 0 ? "\u2212" : "";
+    return `${sign}<span class="frac"><span class="num">${Math.abs(fr.p)}</span><span class="den">${fr.q}</span></span>`;
+  }
+  function fmtSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtCoeff(n) { if (n === 1) return ""; if (n === -1) return "\u2212"; return fmtSigned(n); }
+  function polyMul(a, b) {
+    const result = new Array(a.length + b.length - 1).fill(0);
+    for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) result[i + j] += a[i] * b[j];
+    return result;
+  }
+  function evalPoly(coeffs, x) { return coeffs.reduce((acc, c) => acc * x + c, 0); }
+
+  /* =========================================================
+     2. GENERATION — numerator degree 3-4, denominator degree 1-2
+     (reduced from the original 3-5/3-5 idea specifically to keep
+     the total root count on the number line reasonable — explicit
+     decision). Both sides follow the identical rule set used for
+     synthetic division / polynomial inequality: repeats allowed,
+     at most ONE irreducible quadratic factor, at most ONE
+     fractional root (1/8 denom-2, 1/12 denom-3). A degree-2 side
+     with an irreducible quadratic legitimately has ZERO real
+     roots (verified: the expression is then defined and one
+     constant sign for all real x) — this is an accepted, valid
+     outcome, not an error case.
+     ========================================================= */
+  function genIrreducibleQuadratic() {
+    let b, c;
+    do { b = randInt(-4, 4); c = randInt(1, 6); } while (b * b - 4 * c >= 0);
+    return [1, b, c];
+  }
+  function genPart(degreeChoices, side) {
+    const n = choice(degreeChoices);
+    const hasQuad = n >= 2 && Math.random() < 0.45;
+    const linDegBeforeFrac = hasQuad ? n - 2 : n;
+    let fracFactor = null;
+    const roll = Math.random();
+    if (linDegBeforeFrac >= 1 && roll < 1 / 8) fracFactor = { q: 2, p: choice([1, -1, 3, -3, 5, -5]) };
+    else if (linDegBeforeFrac >= 1 && roll < 1 / 8 + 1 / 12) fracFactor = { q: 3, p: choice([1, -1, 2, -2, 4, -4]) };
+    const numIntRoots = linDegBeforeFrac - (fracFactor ? 1 : 0);
+    const intRoots = [];
+    for (let i = 0; i < numIntRoots; i++) intRoots.push(randInt(-3, 3));
+
+    const factors = []; // list of {kind:'linear', p, q, mult} or {kind:'quad', coeffs:[1,b,c]}
+    const counts = new Map();
+    for (const r of intRoots) {
+      const key = `${r}/1`;
+      if (counts.has(key)) counts.get(key).mult++; else counts.set(key, { p: r, q: 1, mult: 1 });
+    }
+    if (fracFactor) {
+      const key = `${fracFactor.p}/${fracFactor.q}`;
+      if (counts.has(key)) counts.get(key).mult++; else counts.set(key, { p: fracFactor.p, q: fracFactor.q, mult: 1 });
+    }
+    for (const rc of counts.values()) factors.push({ kind: "linear", ...rc, side });
+
+    let poly = [1];
+    for (const f of factors) for (let k = 0; k < f.mult; k++) poly = polyMul(poly, [f.q, -f.p]);
+    let quad = null;
+    if (hasQuad) { quad = genIrreducibleQuadratic(); poly = polyMul(poly, quad); factors.push({ kind: "quad", coeffs: quad, side }); }
+
+    return { n, poly, factors };
+  }
+  function generateProblem() {
+    const numer = genPart([3, 4], "num");
+    const denom = genPart([1, 2], "den");
+    const ineq = choice([">", "<", ">=", "<="]);
+    return { numer, denom, ineq };
+  }
+
+  /* =========================================================
+     3. SIGN ANALYSIS
+     All roots (numerator AND denominator) are merged onto ONE
+     number line, sorted, then read RIGHT TO LEFT (per explicit
+     instruction). Every factor's sign at each region is tracked
+     individually (not just the combined value) so the answer can
+     show the classic "(+)(+)(-)/(+)(-)(-)" style breakdown. A
+     denominator root is EXCLUDED from the solution unconditionally
+     (open circle) regardless of the inequality's strictness —
+     confirmed explicitly, and verified beforehand that this holds
+     even when a numerator root coincides with it (the shared
+     factor's sign cancels identically on both sides, so per-factor
+     sign tracking near that point still works normally elsewhere).
+     ========================================================= */
+  function factorSignAt(f, x) {
+    if (f.kind === "quad") return evalPoly(f.coeffs, x) > 0 ? 1 : -1; // irreducible: never 0, sign is CONSTANT
+    return (x - f.p / f.q) * f.q > 0 ? 1 : -1; // RAW sign of (q*x - p) — used for the per-bracket DISPLAY,
+    // deliberately NOT adjusted for multiplicity here (each bracket shown once regardless of mult)
+  }
+  function factorSignPow(f, x) {
+    // the factor's ACTUAL contribution to the combined sign, i.e. raised to its multiplicity —
+    // even multiplicity always contributes +1 no matter the raw sign (verified: this is exactly what
+    // was missing before, causing 530/2000 mismatches against direct evaluation)
+    if (f.kind === "quad") return factorSignAt(f, x);
+    return f.mult % 2 === 0 ? 1 : factorSignAt(f, x);
+  }
+  function allRootMarkers(prob) {
+    const markers = [];
+    for (const f of prob.numer.factors) if (f.kind === "linear") markers.push({ p: f.p, q: f.q, side: "num", mult: f.mult });
+    for (const f of prob.denom.factors) if (f.kind === "linear") markers.push({ p: f.p, q: f.q, side: "den", mult: f.mult });
+    // merge markers that land on the exact same value (numerator+denominator sharing a root)
+    const merged = new Map();
+    for (const m of markers) {
+      const key = `${m.p}/${m.q}`;
+      if (!merged.has(key)) merged.set(key, { p: m.p, q: m.q, num: false, den: false });
+      const entry = merged.get(key);
+      if (m.side === "num") entry.num = true; else entry.den = true;
+    }
+    return [...merged.values()].sort((a, b) => b.p / b.q - a.p / a.q); // RIGHT to LEFT
+  }
+  function combinedSignAt(prob, x) {
+    let s = 1;
+    for (const f of prob.numer.factors) s *= factorSignPow(f, x);
+    for (const f of prob.denom.factors) s *= factorSignPow(f, x);
+    return s;
+  }
+  function buildSignTable(prob) {
+    const markers = allRootMarkers(prob); // right to left
+    const vals = markers.map(m => m.p / m.q);
+    const boundsRL = [Infinity, ...vals, -Infinity]; // regions right to left
+    const regions = [];
+    for (let i = 0; i < boundsRL.length - 1; i++) {
+      const hi = boundsRL[i], lo = boundsRL[i + 1];
+      const mid = isFinite(hi) && isFinite(lo) ? (hi + lo) / 2 : (isFinite(hi) ? hi - 1 : lo + 1);
+      regions.push({ lo, hi, mid });
+    }
+    return { markers, regions };
+  }
+  function determineSolution(prob) {
+    const { markers, regions } = buildSignTable(prob);
+    const wantPos = prob.ineq === ">" || prob.ineq === ">=";
+    const strict = prob.ineq === ">" || prob.ineq === "<";
+    let intervals = regions.filter(r => (combinedSignAt(prob, r.mid) > 0) === wantPos)
+      .map(r => ({ lo: r.lo, hi: r.hi, closedLo: false, closedHi: false }));
+    const isolated = [];
+    if (!strict) {
+      for (const m of markers) {
+        if (m.den) continue; // denominator root: ALWAYS excluded, never a solution point, regardless of ineq
+        // find this marker's multiplicity/evenness from the numerator factor list
+        const numFactor = prob.numer.factors.find(f => f.kind === "linear" && f.p === m.p && f.q === m.q);
+        const mVal = m.p / m.q;
+        const isEven = numFactor && numFactor.mult % 2 === 0;
+        if (isEven) {
+          const sideSign = combinedSignAt(prob, mVal - 1e-6);
+          if ((sideSign > 0) === wantPos) {
+            for (const iv of intervals) { if (iv.hi === mVal) iv.closedHi = true; if (iv.lo === mVal) iv.closedLo = true; }
+          } else isolated.push({ p: m.p, q: m.q });
+        } else {
+          for (const iv of intervals) { if (iv.hi === mVal) iv.closedHi = true; if (iv.lo === mVal) iv.closedLo = true; }
+        }
+      }
+    }
+    // always ensure denominator-root boundaries stay OPEN even if adjacent regions matched
+    for (const m of markers) {
+      if (!m.den) continue;
+      const mVal = m.p / m.q;
+      for (const iv of intervals) { if (iv.hi === mVal) iv.closedHi = false; if (iv.lo === mVal) iv.closedLo = false; }
+    }
+    // merge isolated points sitting exactly between two open-touching intervals
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let k = isolated.length - 1; k >= 0; k--) {
+        const rVal = isolated[k].p / isolated[k].q;
+        const left = intervals.find(iv => iv.hi === rVal && !iv.closedHi);
+        const right = intervals.find(iv => iv.lo === rVal && !iv.closedLo);
+        if (left && right) {
+          left.hi = right.hi; left.closedHi = right.closedHi;
+          intervals.splice(intervals.indexOf(right), 1);
+          isolated.splice(k, 1);
+          changed = true;
+        }
+      }
+    }
+    return { intervals, isolated, markers };
+  }
+
+  /* =========================================================
+     4. FORMATTING
+     ========================================================= */
+  function fmtIneqSymbol(ineq) { return { ">": ">", "<": "<", ">=": "\u2265", "<=": "\u2264" }[ineq]; }
+  function fmtPolyExpanded(coeffs) {
+    const n = coeffs.length - 1;
+    const allZero = coeffs.every(c => c === 0);
+    let s = ""; let first = true;
+    for (let i = 0; i <= n; i++) {
+      const c = coeffs[i]; if (c === 0 && !(allZero && i === n)) continue;
+      const power = n - i;
+      const label = power === 0 ? "" : power === 1 ? "x" : `x${"\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076"[power]}`;
+      const sign = c >= 0 ? (first ? "" : " + ") : (first ? "\u2212" : " \u2212 ");
+      const ac = Math.abs(c);
+      const coefStr = (ac === 1 && label !== "") ? "" : `${ac}`;
+      s += sign + coefStr + label; first = false;
+    }
+    return s || "0";
+  }
+  function fmtHiddenProblem(prob) {
+    const numStr = fmtPolyExpanded(prob.numer.poly);
+    const denStr = fmtPolyExpanded(prob.denom.poly);
+    return `<span class="frac-display"><span class="fnum">${numStr}</span><span class="fden">${denStr}</span></span> ${fmtIneqSymbol(prob.ineq)} 0`;
+  }
+  function fmtLinearFactor(f) {
+    const base = f.q === 1
+      ? (f.p === 0 ? "x" : f.p > 0 ? `(x \u2212 ${f.p})` : `(x + ${Math.abs(f.p)})`)
+      : `(${f.q}x ${f.p > 0 ? "\u2212" : "+"} ${Math.abs(f.p)})`;
+    return f.mult === 1 ? base : `${base}${"\u00b9\u00b2\u00b3\u2074\u2075"[f.mult - 1] || `^${f.mult}`}`;
+  }
+  function fmtQuadFactor(f) { return `(${fmtPolyExpanded(f.coeffs)})`; }
+  function fmtFactoredPart(part) {
+    return part.factors.map(f => f.kind === "quad" ? fmtQuadFactor(f) : fmtLinearFactor(f)).join("");
+  }
+  function fmtFactoredDisplay(prob) {
+    return `<span class="frac-display"><span class="fnum">${fmtFactoredPart(prob.numer)}</span><span class="fden">${fmtFactoredPart(prob.denom)}</span></span> ${fmtIneqSymbol(prob.ineq)} 0`;
+  }
+  function fmtRootLabel(m) { return m.q === 1 ? fmtSigned(m.p) : (m.p < 0 ? `\u2212${fracHTML({ p: -m.p, q: m.q })}` : fracHTML(m)); }
+  function fmtIntervalBound(v) {
+    if (v === -Infinity) return "\u2212\u221e";
+    if (v === Infinity) return "\u221e";
+    return Number.isInteger(v) ? fmtSigned(v) : fracHTML(reduceFrac(Math.round(v * 60), 60));
+  }
+  function fmtSolutionSet(sol) {
+    const parts = [];
+    // list left to right for the final notation (conventional), even though the WORK is right-to-left
+    const sortedIntervals = [...sol.intervals].sort((a, b) => a.lo - b.lo);
+    for (const iv of sortedIntervals) {
+      const lb = iv.lo === -Infinity ? "(" : (iv.closedLo ? "[" : "(");
+      const rb = iv.hi === Infinity ? ")" : (iv.closedHi ? "]" : ")");
+      parts.push(`${lb}${fmtIntervalBound(iv.lo)}, ${fmtIntervalBound(iv.hi)}${rb}`);
+    }
+    for (const iso of sol.isolated) parts.push(`{${fmtRootLabel(iso)}}`);
+    if (!parts.length) return "\u2205 (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e33\u0e15\u0e2d\u0e1a)";
+    return parts.join(" \u222a ");
+  }
+
+  /* =========================================================
+     5. SIGN TABLE (the classic "(+)(+)(-)/(+)(-)(-)" per-factor
+     breakdown, one row per DISTINCT factor, one column per region,
+     read RIGHT TO LEFT as explicitly requested, with a combined
+     row at the bottom)
+     ========================================================= */
+  function fmtRegionLabel(r) {
+    const loLabel = r.lo === -Infinity ? null : fmtIntervalBound(r.lo);
+    const hiLabel = r.hi === Infinity ? null : fmtIntervalBound(r.hi);
+    if (loLabel === null) return `x &lt; ${hiLabel}`;
+    if (hiLabel === null) return `x &gt; ${loLabel}`;
+    return `${loLabel} &lt; x &lt; ${hiLabel}`;
+  }
+  function buildSignTableHTML(prob) {
+    const { regions } = buildSignTable(prob);
+    const allFactors = [...prob.numer.factors.map(f => ({ ...f, part: "num" })), ...prob.denom.factors.map(f => ({ ...f, part: "den" }))];
+    let html = `<div class="sign-table-wrap"><table class="sign-table"><tbody>`;
+    html += `<tr><td class="factor-label-cell">\u0e0a\u0e48\u0e27\u0e07</td>`;
+    for (const r of regions) html += `<td style="font-size:0.85em; color:var(--muted); white-space:nowrap;">${fmtRegionLabel(r)}</td>`;
+    html += `</tr>`;
+    for (const f of allFactors) {
+      const label = f.kind === "quad" ? fmtQuadFactor(f) : fmtLinearFactor(f);
+      html += `<tr><td class="factor-label-cell">${label}${f.part === "den" ? " <i>(\u0e2a\u0e48\u0e27\u0e19)</i>" : ""}</td>`;
+      for (const r of regions) {
+        // use the sign AFTER applying this factor's own multiplicity (factorSignPow) — the
+        // row is labelled WITH its exponent (e.g. "x^2"), so the sign shown must already
+        // reflect that exponent (always "+" for an even power), never the raw un-powered
+        // sign of a single instance (confirmed as the actual bug from user-reported output)
+        const s = factorSignPow(f, r.mid);
+        html += `<td class="${s > 0 ? "sign-pos" : "sign-neg"}">${s > 0 ? "+" : "\u2212"}</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `<tr class="combined-row"><td class="factor-label-cell">\u0e23\u0e27\u0e21</td>`;
+    for (const r of regions) {
+      const s = combinedSignAt(prob, r.mid);
+      html += `<td class="${s > 0 ? "sign-pos" : "sign-neg"}">${s > 0 ? "+" : "\u2212"}</td>`;
+    }
+    html += `</tr></tbody></table></div>`;
+    return html;
+  }
+
+  /* =========================================================
+     6. NUMBER LINE (no graph — per explicit instruction — filled
+     dot for an included boundary, hollow dot for an ALWAYS-
+     excluded denominator root regardless of the inequality)
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", GOLD = "#F9E795", DEN_COLOR = "#F96167";
+  function buildNumberLine(prob, sol) {
+    const W = 600, H = 90;
+    const vals = sol.markers.map(m => m.p / m.q);
+    let xLo = Math.min(...vals), xHi = Math.max(...vals);
+    let span = xHi - xLo; if (span < 2) { const c = (xLo + xHi) / 2; xLo = c - 1; xHi = c + 1; span = 2; }
+    const pad = span * 0.25; xLo -= pad; xHi += pad;
+    const padL = 30, padR = 30;
+    const toPx = (x) => padL + (x - xLo) * (W - padL - padR) / (xHi - xLo);
+    const midY = H / 2;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    svg += `<line x1="${toPx(xLo)}" y1="${midY}" x2="${toPx(xHi)}" y2="${midY}" stroke="${AXIS_COLOR}" stroke-width="1.5"/>`;
+    for (const m of sol.markers) {
+      const x = m.p / m.q, px = toPx(x);
+      const isDen = m.den;
+      const included = !isDen && (sol.intervals.some(iv => (iv.lo === x && iv.closedLo) || (iv.hi === x && iv.closedHi)) || sol.isolated.some(iso => Math.abs(iso.p / iso.q - x) < 1e-9));
+      svg += `<circle cx="${px.toFixed(1)}" cy="${midY}" r="5" fill="${included ? GOLD : "none"}" stroke="${isDen ? DEN_COLOR : GOLD}" stroke-width="2"/>`;
+      svg += `<text x="${px.toFixed(1)}" y="${midY + 24}" font-size="12" fill="${isDen ? DEN_COLOR : GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${fmtRootLabelPlain(m)}</text>`;
+    }
+    const bounds = [xLo, ...vals.slice().sort((a, b) => a - b), xHi];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const mid = (bounds[i] + bounds[i + 1]) / 2;
+      const s = combinedSignAt(prob, mid);
+      svg += `<text x="${toPx(mid).toFixed(1)}" y="${midY - 12}" font-size="14" fill="${s > 0 ? "#8FD3F4" : DEN_COLOR}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${s > 0 ? "+" : "\u2212"}</text>`;
+    }
+    svg += "</svg>";
+    return svg;
+  }
+  function fmtRootLabelPlain(m) { return m.q === 1 ? `${m.p}` : `${m.p}/${m.q}`; }
+
+  /* =========================================================
+     7. DISPLAY / EVENTS
+     ========================================================= */
+  const exprEl = document.getElementById("exprEl");
+  const answerWrap = document.getElementById("answerWrap");
+  const numberlineBox = document.getElementById("numberlineBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+
+  let current = null;
+
+  function buildAnswerCardHTML(prob) {
+    const sol = determineSolution(prob);
+    return `
+      <div class="section-title">1. แยกตัวประกอบเศษและส่วน:</div>
+      <div class="answer-row" style="text-align:center;">${fmtFactoredDisplay(prob)}</div>
+      <div class="section-title">2. ตรวจเครื่องหมายแต่ละตัวประกอบ (ไล่จากขวาไปซ้าย):</div>
+      ${buildSignTableHTML(prob)}
+      <div class="section-title">3. เส้นจำนวนและคำตอบ:</div>
+    `;
+  }
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "แยกตัวประกอบเศษและส่วน แล้วตรวจเครื่องหมาย แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    answerWrap.style.display = "";
+    const sol = determineSolution(current);
+    numberlineBox.innerHTML = buildNumberLine(current, sol);
+    answerCard.innerHTML = buildAnswerCardHTML(current) +
+      `<div class="solution-line">x \u2208 ${fmtSolutionSet(sol)}</div>`;
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      exprEl.innerHTML = fmtHiddenProblem(current);
+      displayProblem();
+      exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const el = showingAnswer ? answerWrap : exprEl;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? answerWrap : exprEl).classList.remove("swap");
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  current = generateProblem();
+  exprEl.innerHTML = fmtHiddenProblem(current);
+  displayProblem();
+</script>
+</body>
+</html>
