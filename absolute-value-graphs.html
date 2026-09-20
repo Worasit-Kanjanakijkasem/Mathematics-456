@@ -501,6 +501,46 @@
     const bSuffix = B === 0 ? "" : (B > 0 ? ` + ${B}` : ` \u2212 ${Math.abs(B)}`);
     return `y = ${xPart}${bSuffix}`;
   }
+  function buildSegmentsNested(prob) {
+    // same derivation as verified for the companion inequality tool: kink points are
+    // h1 itself plus wherever the inner expression B*a1|x-h1|+C crosses zero (0 or 2
+    // extra points, giving 1 or 3 kinks total), each segment's exact slope/intercept
+    // read off directly from the sign of (x-h1) and the sign of the inner value there
+    const { a1, h1, B, C, A, D } = prob;
+    const M = B * a1;
+    const kinks = new Set([h1]);
+    if (M !== 0 && -C / M > 1e-9) {
+      const g = gcdInt(-C, M) || 1;
+      const vNum = -C / g, vDen = M / g;
+      const vVal = vNum / vDen;
+      kinks.add(h1 + vVal); kinks.add(h1 - vVal);
+    }
+    const sorted = [...kinks].sort((x, y) => x - y);
+    const bounds = [-Infinity, ...sorted, Infinity];
+    const segs = [];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const lo = bounds[i], hi = bounds[i + 1];
+      const mid = isFinite(lo) && isFinite(hi) ? (lo + hi) / 2 : (isFinite(lo) ? lo + 1 : hi - 1);
+      const sgn1 = mid >= h1 ? 1 : -1;
+      const innerSlope = M * sgn1, innerIntercept = -M * sgn1 * h1 + C;
+      const innerVal = innerSlope * mid + innerIntercept;
+      const sgn2 = innerVal >= 0 ? 1 : -1;
+      segs.push({ lo, hi, slope: A * sgn2 * innerSlope, intercept: A * sgn2 * innerIntercept + D });
+    }
+    return segs;
+  }
+  function fmtSegmentsListNested(segs) {
+    return segs.map(s => {
+      const lo = s.lo === -Infinity ? null : s.lo, hi = s.hi === Infinity ? null : s.hi;
+      const lb = lo === null ? null : (Number.isInteger(lo) ? fmtSigned(lo) : fracHTML(Math.round(lo * 60), 60));
+      const hb = hi === null ? null : (Number.isInteger(hi) ? fmtSigned(hi) : fracHTML(Math.round(hi * 60), 60));
+      let cond;
+      if (lo === null) cond = `x &lt; ${hb}`;
+      else if (hi === null) cond = `x &gt; ${lb}`;
+      else cond = `${lb} \u2264 x \u2264 ${hb}`;
+      return `<div class="answer-row">&nbsp;&nbsp;&nbsp;${cond}: &nbsp;${fmtLine(s.slope, s.intercept)}</div>`;
+    }).join("");
+  }
 
   function fmtAnswerCard(prob) {
     if (prob.type === "sum") {
@@ -527,6 +567,8 @@
         <div class="answer-row"><b>2. ขั้นกลาง B\u00b7y\u2081+C:</b> เป็นการปรับ y\u2081 ด้วยการคูณ ${prob.B} แล้วบวก ${prob.C} (รูปร่างยังเป็น V เดิม เปลี่ยนแค่ความชัน/ตำแหน่ง)</div>
         <div class="answer-row"><b>3. y สุดท้าย:</b> ${kinkNote}</div>
         <div class="answer-row">จำนวนจุดหักมุมของกราฟสุดท้าย: <b>${prob.kinkCount} จุด</b></div>
+        <div class="answer-row"><b>สมการเส้นตรงแต่ละช่วง:</b></div>
+        ${fmtSegmentsListNested(buildSegmentsNested(prob))}
       `;
     }
   }
