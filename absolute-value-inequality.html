@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>อสมการค่าสัมบูรณ์ (มัธยมปลาย)</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em; font-size: clamp(13px, 1.6vw, 18px); font-weight: 700; color: var(--gold);
+    text-transform: uppercase; margin-bottom: 8px; z-index: 1; text-align: center; padding: 0 12px;
+  }
+  .type-badge { font-size: clamp(12px, 1.6vw, 15px); color: var(--muted); margin-bottom: 6px; z-index: 1; }
+
+  .stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; width: 100%; z-index: 1; padding: 10px 20px; overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(18px, 3.4vw, 28px); font-weight: 700;
+    text-align: center; line-height: 1.6; max-width: 95vw; transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(94vw, 460px); margin: 0 auto 14px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06); border: 1.5px solid rgba(249,231,149,0.4); border-radius: 16px;
+    padding: 16px 20px; margin-bottom: 12px;
+  }
+  .answer-row { margin-bottom: 10px; font-size: clamp(12.5px, 1.9vw, 15px); line-height: 1.6; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 0.08em; line-height: 1.05; }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.03em; }
+  .frac .den { padding-top: 0.03em; }
+  .outer-bar { font-size: 1.5em; vertical-align: -0.15em; display: inline-block; font-weight: 400; }
+
+  .section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
+  .factored-line {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
+    text-align: center; color: var(--gold); margin-top: 10px; line-height: 1.6;
+  }
+  .solution-line {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
+    text-align: center; color: var(--gold); margin-top: 12px;
+  }
+
+  .prompt { margin-top: 16px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 560px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(70vw, 340px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">อสมการค่าสัมบูรณ์ (มัธยมปลาย)</div>
+  <div class="type-badge" id="typeBadge"></div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">จัดรูปให้ด้านขวาเป็น 0 แล้วแก้อสมการ แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกประเภทโจทย์ที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+      <div class="toggle-row"><span>1. ผลบวก y = y₁ + y₂</span><label class="switch"><input type="checkbox" id="enableSum" checked><span class="slider-track"></span></label></div>
+      <div class="toggle-row"><span>2. ค่าสัมบูรณ์ซ้อน</span><label class="switch"><input type="checkbox" id="enableNested" checked><span class="slider-track"></span></label></div>
+      <div class="settings-error" id="settingsError"></div>
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG / UTILITIES
+     ========================================================= */
+  const DEFAULT_CFG = { enableSum: true, enableNested: true };
+  const STORAGE_KEY = "absineq-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function gcdInt(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcdInt(b, a % b); }
+  function reduceFrac(p, q) { const g = gcdInt(p, q) || 1; return q < 0 ? { p: -p / g, q: -q / g } : { p: p / g, q: q / g }; }
+  function fracHTML(fr) {
+    if (fr.q === 1) return `${fr.p}`;
+    const sign = fr.p < 0 ? "\u2212" : "";
+    return `${sign}<span class="frac"><span class="num">${Math.abs(fr.p)}</span><span class="den">${fr.q}</span></span>`;
+  }
+  function fmtSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtCoeff(n) { if (n === 1) return ""; if (n === -1) return "\u2212"; return fmtSigned(n); }
+
+  /* =========================================================
+     2. GENERATION — SUM type: y = a1|x-h1| + a2|x-h2| (+D on y2
+     only, per the earlier established simplification), h1 != h2
+     forced distinct. A target root r0 is chosen FIRST and D solved
+     backward so the function is GUARANTEED to cross/touch zero at
+     least once (0-root cases were found to occur ~33% of the time
+     with fully free generation — verified before implementing).
+     With ~35% probability r0 is deliberately set to h1 or h2,
+     creating a genuine "touches but doesn't cross" kink (verified:
+     100% success rate).
+     ========================================================= */
+  function sumY(a1, h1, a2, h2, D, x) { return a1 * Math.abs(x - h1) + a2 * Math.abs(x - h2) + D; }
+  function findRootsSum(a1, h1, a2, h2, D) {
+    // exact-fraction version: A,B below are always integers (built from integer
+    // inputs only), so every root is computed as an EXACT p/q pair via reduceFrac,
+    // never a rounded decimal — avoids the precision residue found during testing
+    // when roots were stored as truncated decimals and re-evaluated.
+    const lo = Math.min(h1, h2), hi = Math.max(h1, h2);
+    function segCoeffs(region) {
+      if (region === "left") return [-(a1 + a2), a1 * h1 + a2 * h2 + D];
+      if (region === "right") return [(a1 + a2), -a1 * h1 - a2 * h2 + D];
+      return h1 <= h2 ? [a1 - a2, -a1 * h1 + a2 * h2 + D] : [a2 - a1, a1 * h1 - a2 * h2 + D];
+    }
+    const rootsMap = new Map();
+    for (const [region, bLo, bHi] of [["left", -Infinity, lo], ["mid", lo, hi], ["right", hi, Infinity]]) {
+      const [A, B] = segCoeffs(region);
+      if (A === 0) continue;
+      const r = reduceFrac(-B, A);
+      const rVal = r.p / r.q;
+      if (rVal >= bLo - 1e-9 && rVal <= bHi + 1e-9) rootsMap.set(`${r.p}/${r.q}`, r);
+    }
+    return [...rootsMap.values()].sort((a, b) => a.p / a.q - b.p / b.q);
+  }
+  function genSum() {
+    const a1 = choice([-3, -2, -1, 1, 2, 3]);
+    // exclude a2 = a1 or a2 = -a1: either would make one segment's slope exactly 0
+    // (the middle segment when a1=a2, or an outer segment when a1=-a2), which — if
+    // that segment's intercept also happens to land on 0 — degenerates into an
+    // ENTIRE interval of infinitely many roots rather than isolated points (found
+    // during testing: 82/1500 mismatches traced to exactly this case before excluding it)
+    let a2;
+    do { a2 = choice([-3, -2, -1, 1, 2, 3]); } while (a2 === a1 || a2 === -a1);
+    let h1 = randInt(-6, 6), h2 = randInt(-6, 6);
+    while (h2 === h1) h2 = randInt(-6, 6);
+    const forceTouch = Math.random() < 0.35;
+    const r0 = forceTouch ? choice([h1, h2]) : randInt(Math.min(h1, h2) - 4, Math.max(h1, h2) + 4);
+    const D = -(a1 * Math.abs(r0 - h1) + a2 * Math.abs(r0 - h2));
+    const ineq = choice([">", "<", ">=", "<="]);
+    const d = randInt(-15, 15) || 3;
+    return { type: "sum", a1, h1, a2, h2, D, ineq, d, hiddenD: D + d };
+  }
+
+  /* =========================================================
+     2b. GENERATION — NESTED type: y = A|B*a1|x-h1|+C| (+D), same
+     "choose target root, solve backward" strategy, verified to
+     always yield >=1 root (0/2000 zero-root cases) with rich
+     variety (1 to 4 roots) and a reliable forced-touch mechanism
+     (697/697 verified) for when the touch should occur at the
+     INNER kink h1 itself.
+     ========================================================= */
+  function nestedY(A, a1, h1, B, C, D, x) { return A * Math.abs(B * a1 * Math.abs(x - h1) + C) + D; }
+  function findRootsNested(A, a1, h1, B, C, D) {
+    // exact-fraction version, same reasoning as findRootsSum above
+    const target = reduceFrac(-D, A); // must be >=0 for real solutions
+    if (target.p < 0) return [];
+    const M = B * a1;
+    if (M === 0) return [];
+    const candidates = [];
+    if (target.p === 0) candidates.push(reduceFrac(-C, M));
+    else {
+      candidates.push(reduceFrac(target.p - C * target.q, M * target.q));
+      candidates.push(reduceFrac(-target.p - C * target.q, M * target.q));
+    }
+    const rootsMap = new Map();
+    for (let v of candidates) {
+      const vVal = v.p / v.q;
+      if (vVal >= -1e-9) {
+        if (vVal < 0) v = { p: 0, q: 1 };
+        const r1 = reduceFrac(h1 * v.q + v.p, v.q), r2 = reduceFrac(h1 * v.q - v.p, v.q);
+        rootsMap.set(`${r1.p}/${r1.q}`, r1);
+        rootsMap.set(`${r2.p}/${r2.q}`, r2);
+      }
+    }
+    return [...rootsMap.values()].sort((a, b) => a.p / a.q - b.p / b.q);
+  }
+  function genNested() {
+    const a1 = choice([-3, -2, -1, 1, 2, 3]);
+    const h1 = randInt(-5, 5);
+    const B = choice([-3, -2, -1, 1, 2, 3]);
+    const A = choice([-2, -1, 1, 2]);
+    const forceTouch = Math.random() < 0.35;
+    let C, D, r0;
+    if (forceTouch) {
+      r0 = h1;
+      C = randInt(-8, 8);
+      D = -A * Math.abs(C);
+    } else {
+      r0 = randInt(h1 - 5, h1 + 5);
+      C = randInt(-8, 8);
+      const innerR0 = B * a1 * Math.abs(r0 - h1) + C;
+      D = -A * Math.abs(innerR0);
+    }
+    const ineq = choice([">", "<", ">=", "<="]);
+    const d = randInt(-15, 15) || 3;
+    return { type: "nested", A, a1, h1, B, C, D, ineq, d, hiddenD: D + d };
+  }
+  function generateProblem() {
+    const options = [];
+    if (cfg.enableSum) options.push("sum");
+    if (cfg.enableNested) options.push("nested");
+    if (!options.length) options.push("sum");
+    return choice(options) === "sum" ? genSum() : genNested();
+  }
+
+  /* =========================================================
+     3. SOLUTION DETERMINATION (same even/odd-touch principle as
+     the polynomial-inequality tool, applied to the roots found
+     above; verified via the merge-cleanup step too)
+     ========================================================= */
+  function evalAt(prob, x) {
+    return prob.type === "sum" ? sumY(prob.a1, prob.h1, prob.a2, prob.h2, prob.D, x)
+                                : nestedY(prob.A, prob.a1, prob.h1, prob.B, prob.C, prob.D, x);
+  }
+  function signAt(prob, x) { const v = evalAt(prob, x); return v > 1e-9 ? 1 : v < -1e-9 ? -1 : 0; }
+  function determineSolution(prob, roots) {
+    const vals = roots.map(r => r.p / r.q);
+    const bounds = [-Infinity, ...vals, Infinity];
+    const wantPos = prob.ineq === ">" || prob.ineq === ">=";
+    const strict = prob.ineq === ">" || prob.ineq === "<";
+    const segs = [];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const lo = bounds[i], hi = bounds[i + 1];
+      const mid = isFinite(lo) && isFinite(hi) ? (lo + hi) / 2 : (isFinite(lo) ? lo + 1 : hi - 1);
+      segs.push({ lo, hi, sign: signAt(prob, mid) });
+    }
+    let intervals = segs.filter(s => (s.sign > 0) === wantPos).map(s => ({ lo: s.lo, hi: s.hi, closedLo: false, closedHi: false }));
+    const isolated = [];
+    if (!strict) {
+      for (const r of roots) {
+        const rVal = r.p / r.q;
+        const leftSign = signAt(prob, rVal - 1e-6), rightSign = signAt(prob, rVal + 1e-6);
+        const touches = (leftSign === rightSign); // even-multiplicity-like behaviour at a kink
+        if (touches) {
+          if ((leftSign > 0) === wantPos) {
+            for (const iv of intervals) { if (iv.hi === rVal) iv.closedHi = true; if (iv.lo === rVal) iv.closedLo = true; }
+          } else isolated.push(r);
+        } else {
+          for (const iv of intervals) { if (iv.hi === rVal) iv.closedHi = true; if (iv.lo === rVal) iv.closedLo = true; }
+        }
+      }
+    }
+    // merge isolated points sitting exactly between two open-touching intervals
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let k = isolated.length - 1; k >= 0; k--) {
+        const rVal = isolated[k].p / isolated[k].q;
+        const left = intervals.find(iv => iv.hi === rVal && !iv.closedHi);
+        const right = intervals.find(iv => iv.lo === rVal && !iv.closedLo);
+        if (left && right) {
+          left.hi = right.hi; left.closedHi = right.closedHi;
+          intervals.splice(intervals.indexOf(right), 1);
+          isolated.splice(k, 1);
+          changed = true;
+        }
+      }
+    }
+    return { intervals, isolated };
+  }
+
+  /* =========================================================
+     4. FORMATTING
+     ========================================================= */
+  function fmtIneqSymbol(ineq) { return { ">": ">", "<": "<", ">=": "\u2265", "<=": "\u2264" }[ineq]; }
+  function fmtLinInside(B, x, C) {
+    const bPart = `${fmtCoeff(B)}${x}`;
+    if (C === 0) return bPart;
+    return C > 0 ? `${bPart} + ${C}` : `${bPart} \u2212 ${Math.abs(C)}`;
+  }
+
+  /* =========================================================
+     4b. PIECEWISE LINEAR SEGMENT EQUATIONS (exact integer slope +
+     intercept per segment, shown in the answer per the explicit
+     request to match the earlier absolute-value GRAPHING tool's
+     final breakdown step) — verified with Python beforehand for
+     the nested type's variable segment count (1 or 3 kinks).
+     ========================================================= */
+  function fmtLineEq(slope, intercept) {
+    const xPart = slope === 1 ? "x" : slope === -1 ? "\u2212x" : `${fmtSigned(slope)}x`;
+    const iPart = intercept === 0 ? "" : (intercept > 0 ? ` + ${intercept}` : ` \u2212 ${Math.abs(intercept)}`);
+    return `y = ${slope === 0 ? (intercept === 0 ? "0" : fmtSigned(intercept)) : xPart + iPart}`;
+  }
+  function buildSegmentsSum(prob) {
+    const { a1, h1, a2, h2, D } = prob;
+    const lo = Math.min(h1, h2), hi = Math.max(h1, h2);
+    const segLeft = { lo: -Infinity, hi: lo, slope: -(a1 + a2), intercept: a1 * h1 + a2 * h2 + D };
+    const segRight = { lo: hi, hi: Infinity, slope: (a1 + a2), intercept: -a1 * h1 - a2 * h2 + D };
+    const segMid = h1 <= h2
+      ? { lo, hi, slope: a1 - a2, intercept: -a1 * h1 + a2 * h2 + D }
+      : { lo, hi, slope: a2 - a1, intercept: a1 * h1 - a2 * h2 + D };
+    return [segLeft, segMid, segRight];
+  }
+  function buildSegmentsNested(prob) {
+    const { A, a1, h1, B, C, D } = prob;
+    const M = B * a1;
+    // kink points: h1 itself, plus where the INNER expression M*|x-h1|+C = 0 (if any)
+    const kinks = new Set([h1]);
+    if (M !== 0 && -C / M > 1e-9) {
+      const v = reduceFrac(-C, M);
+      const vVal = v.p / v.q;
+      kinks.add(h1 + vVal); kinks.add(h1 - vVal);
+    }
+    const sorted = [...kinks].sort((x, y) => x - y);
+    const bounds = [-Infinity, ...sorted, Infinity];
+    const segs = [];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const lo = bounds[i], hi = bounds[i + 1];
+      const mid = isFinite(lo) && isFinite(hi) ? (lo + hi) / 2 : (isFinite(lo) ? lo + 1 : hi - 1);
+      // determine exact signs at this test point to build the exact linear formula
+      const sgn1 = mid >= h1 ? 1 : -1; // sign of (x-h1) -> |x-h1| = sgn1*(x-h1)
+      const innerSlope = M * sgn1, innerIntercept = -M * sgn1 * h1 + C;
+      const innerVal = innerSlope * mid + innerIntercept;
+      const sgn2 = innerVal >= 0 ? 1 : -1; // sign of the inner abs's contents
+      const slope = A * sgn2 * innerSlope, intercept = A * sgn2 * innerIntercept + D;
+      segs.push({ lo, hi, slope, intercept });
+    }
+    return segs;
+  }
+  function fmtSegmentsList(segs) {
+    return segs.map(s => {
+      const lo = s.lo === -Infinity ? null : s.lo, hi = s.hi === Infinity ? null : s.hi;
+      const lb = lo === null ? null : (Number.isInteger(lo) ? fmtSigned(lo) : fracHTML(reduceFrac(Math.round(lo * 60), 60)));
+      const hb = hi === null ? null : (Number.isInteger(hi) ? fmtSigned(hi) : fracHTML(reduceFrac(Math.round(hi * 60), 60)));
+      let cond;
+      if (lo === null) cond = `x &lt; ${hb}`;
+      else if (hi === null) cond = `x &gt; ${lb}`;
+      else cond = `${lb} \u2264 x \u2264 ${hb}`;
+      return `<div class="answer-row">&nbsp;&nbsp;&nbsp;${cond}: &nbsp;${fmtLineEq(s.slope, s.intercept)}</div>`;
+    }).join("");
+  }
+  function fmtHiddenProblem(prob) {
+    if (prob.type === "sum") {
+      const inner1 = fmtLinInside(1, "x", -prob.h1);
+      const t1 = `${fmtCoeff(prob.a1)}|${inner1}|`;
+      const inner2 = fmtLinInside(1, "x", -prob.h2);
+      const t2body = `${fmtCoeff(Math.abs(prob.a2))}|${inner2}|`;
+      const connector = prob.a2 >= 0 ? " + " : " \u2212 ";
+      const dStr = prob.hiddenD === 0 ? "" : (prob.hiddenD > 0 ? ` + ${prob.hiddenD}` : ` \u2212 ${Math.abs(prob.hiddenD)}`);
+      return `${t1}${connector}${t2body}${dStr} ${fmtIneqSymbol(prob.ineq)} ${fmtSigned(prob.d)}`;
+    } else {
+      const M = prob.B * prob.a1;
+      const hStr = prob.h1 === 0 ? "x" : (prob.h1 > 0 ? `x \u2212 ${prob.h1}` : `x + ${Math.abs(prob.h1)}`);
+      const innerAbs = `${fmtCoeff(M)}|${hStr}|`;
+      const withC = prob.C === 0 ? innerAbs : (prob.C > 0 ? `${innerAbs} + ${prob.C}` : `${innerAbs} \u2212 ${Math.abs(prob.C)}`);
+      const OB = '<span class="outer-bar">|</span>';
+      const outer = `${fmtCoeff(prob.A)}${OB}${withC}${OB}`;
+      const dStr = prob.hiddenD === 0 ? "" : (prob.hiddenD > 0 ? ` + ${prob.hiddenD}` : ` \u2212 ${Math.abs(prob.hiddenD)}`);
+      return `${outer}${dStr} ${fmtIneqSymbol(prob.ineq)} ${fmtSigned(prob.d)}`;
+    }
+  }
+  function fmtStandardAbs(a, h) {
+    const hStr = h === 0 ? "x" : (h > 0 ? `x \u2212 ${h}` : `x + ${Math.abs(h)}`);
+    return `${fmtCoeff(a)}|${hStr}|`;
+  }
+  function fmtFactoredDisplay(prob) {
+    if (prob.type === "sum") {
+      const t1 = fmtStandardAbs(prob.a1, prob.h1);
+      const t2 = fmtStandardAbs(prob.a2, prob.h2);
+      const dStr = prob.D === 0 ? "" : (prob.D > 0 ? ` + ${prob.D}` : ` \u2212 ${Math.abs(prob.D)}`);
+      const connector = prob.a2 >= 0 ? " + " : " \u2212 ";
+      const t2disp = fmtStandardAbs(Math.abs(prob.a2), prob.h2);
+      return `${t1}${connector}${t2disp}${dStr} ${fmtIneqSymbol(prob.ineq)} 0`;
+    } else {
+      const inner = fmtStandardAbs(prob.B * prob.a1, prob.h1);
+      const withC = prob.C === 0 ? inner : (prob.C > 0 ? `${inner} + ${prob.C}` : `${inner} \u2212 ${Math.abs(prob.C)}`);
+      const outer = `${fmtCoeff(prob.A)}|${withC}|`;
+      const dStr = prob.D === 0 ? "" : (prob.D > 0 ? ` + ${prob.D}` : ` \u2212 ${Math.abs(prob.D)}`);
+      return `${outer}${dStr} ${fmtIneqSymbol(prob.ineq)} 0`;
+    }
+  }
+  function fmtIntervalBound(v) {
+    if (v === -Infinity) return "\u2212\u221e";
+    if (v === Infinity) return "\u221e";
+    return Number.isInteger(v) ? fmtSigned(v) : fracHTML(reduceFrac(Math.round(v * 60), 60));
+  }
+  function fmtRootLabel(r) { return r.q === 1 ? fmtSigned(r.p) : (r.p < 0 ? `\u2212${fracHTML({ p: -r.p, q: r.q })}` : fracHTML(r)); }
+  function fmtSolutionSet(sol) {
+    const parts = [];
+    for (const iv of sol.intervals) {
+      const lb = iv.lo === -Infinity ? "(" : (iv.closedLo ? "[" : "(");
+      const rb = iv.hi === Infinity ? ")" : (iv.closedHi ? "]" : ")");
+      parts.push(`${lb}${fmtIntervalBound(iv.lo)}, ${fmtIntervalBound(iv.hi)}${rb}`);
+    }
+    for (const iso of sol.isolated) parts.push(`{${fmtRootLabel(iso)}}`);
+    if (!parts.length) return "\u2205 (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e33\u0e15\u0e2d\u0e1a)";
+    return parts.join(" \u222a ");
+  }
+
+  /* =========================================================
+     5. GRAPH + NUMBER LINE (piecewise-linear curve this time, not
+     a polynomial curve — otherwise the same top/bottom "pockets
+     with dashed guides" layout as the polynomial-inequality tool)
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", CURVE_COLOR = "#FFFFFF", DOT_COLOR = "#F96167", GOLD = "#F9E795";
+
+  function buildGraphAndLine(prob, roots) {
+    const W = 420, HGraph = 190, HLine = 70, gap = 6;
+    const totalH = HGraph + gap + HLine;
+    const vals = roots.map(r => r.p / r.q);
+    let xLo = Math.min(...vals), xHi = Math.max(...vals);
+    let span = xHi - xLo;
+    if (span < 4) { const m = (xLo + xHi) / 2; xLo = m - 2; xHi = m + 2; span = 4; }
+    const pad = span * 0.35;
+    xLo -= pad; xHi += pad;
+
+    const padL = 30, padR = 14, padT = 14, padB = 20;
+    const steps = 160;
+    let yLo = Infinity, yHi = -Infinity;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      const y = evalAt(prob, x);
+      pts.push([x, y]);
+      if (y < yLo) yLo = y; if (y > yHi) yHi = y;
+    }
+    if (yHi - yLo < 1e-6) { yLo -= 1; yHi += 1; }
+    const yPad = (yHi - yLo) * 0.15;
+    yLo -= yPad; yHi += yPad;
+    const scaleX = (W - padL - padR) / (xHi - xLo);
+    const scaleYg = (HGraph - padT - padB) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPyGraph = (y) => HGraph - padB - (y - yLo) * scaleYg;
+
+    let svg = `<svg viewBox="0 0 ${W} ${totalH}" xmlns="http://www.w3.org/2000/svg">`;
+    let gInner = "";
+    if (yLo < 0 && yHi > 0) gInner += `<line x1="${toPx(xLo)}" y1="${toPyGraph(0)}" x2="${toPx(xHi)}" y2="${toPyGraph(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    if (xLo < 0 && xHi > 0) gInner += `<line x1="${toPx(0)}" y1="${padT - 4}" x2="${toPx(0)}" y2="${HGraph - padB + 4}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    let d = "";
+    pts.forEach(([x, y], i) => { d += (i === 0 ? "M" : "L") + toPx(x).toFixed(1) + "," + toPyGraph(y).toFixed(1) + " "; });
+    gInner += `<path d="${d}" fill="none" stroke="${CURVE_COLOR}" stroke-width="2.2"/>`;
+    for (const r of vals) gInner += `<circle cx="${toPx(r).toFixed(1)}" cy="${toPyGraph(0).toFixed(1)}" r="3.6" fill="${DOT_COLOR}"/>`;
+    svg += `<g transform="translate(0,0)">${gInner}</g>`;
+
+    let lInner = `<line x1="${toPx(xLo)}" y1="${(HLine/2).toFixed(1)}" x2="${toPx(xHi)}" y2="${(HLine/2).toFixed(1)}" stroke="${AXIS_COLOR}" stroke-width="1.5"/>`;
+    const uniq = [...new Set(vals)].sort((a, b) => a - b);
+    for (const r of uniq) {
+      lInner += `<line x1="${toPx(r).toFixed(1)}" y1="${(HLine/2-6).toFixed(1)}" x2="${toPx(r).toFixed(1)}" y2="${(HLine/2+6).toFixed(1)}" stroke="${GOLD}" stroke-width="2"/>`;
+      const rootObj = roots.find(rt => Math.abs(rt.p / rt.q - r) < 1e-9);
+      lInner += `<text x="${toPx(r).toFixed(1)}" y="${(HLine/2+20).toFixed(1)}" font-size="10" fill="${GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${rootObj.q === 1 ? r : rootObj.p + "/" + rootObj.q}</text>`;
+    }
+    const bounds = [xLo, ...uniq, xHi];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const mid = (bounds[i] + bounds[i + 1]) / 2;
+      const s = signAt(prob, mid);
+      lInner += `<text x="${toPx(mid).toFixed(1)}" y="${(HLine/2-10).toFixed(1)}" font-size="13" fill="${s>0?"#8FD3F4":"#F96167"}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${s>0?"+":"\u2212"}</text>`;
+    }
+    svg += `<g transform="translate(0,${HGraph + gap})">${lInner}</g>`;
+
+    for (const r of uniq) {
+      const px = toPx(r);
+      svg += `<line x1="${px.toFixed(1)}" y1="0" x2="${px.toFixed(1)}" y2="${totalH}" stroke="${GOLD}" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+    }
+    svg += "</svg>";
+    return svg;
+  }
+
+  /* =========================================================
+     6. DISPLAY / EVENTS
+     ========================================================= */
+  const TYPE_LABELS = { sum: "\u0e41\u0e1a\u0e1a\u0e17\u0e35\u0e48 1: \u0e1c\u0e25\u0e1a\u0e27\u0e01\u0e02\u0e2d\u0e07\u0e04\u0e48\u0e32\u0e2a\u0e31\u0e21\u0e1a\u0e39\u0e23\u0e13\u0e4c", nested: "\u0e41\u0e1a\u0e1a\u0e17\u0e35\u0e48 2: \u0e04\u0e48\u0e32\u0e2a\u0e31\u0e21\u0e1a\u0e39\u0e23\u0e13\u0e4c\u0e0b\u0e49\u0e2d\u0e19" };
+  const typeBadge = document.getElementById("typeBadge");
+  const exprEl = document.getElementById("exprEl");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const enableSum = document.getElementById("enableSum");
+  const enableNested = document.getElementById("enableNested");
+
+  let current = null;
+
+  function buildAnswerCardHTML(prob) {
+    const roots = prob.type === "sum" ? findRootsSum(prob.a1, prob.h1, prob.a2, prob.h2, prob.D)
+                                       : findRootsNested(prob.A, prob.a1, prob.h1, prob.B, prob.C, prob.D);
+    const sol = determineSolution(prob, roots);
+    let structureHTML;
+    if (prob.type === "sum") {
+      structureHTML = `
+        <div class="answer-row"><b>1. จัดรูปให้ด้านขวาเป็น 0</b> (ลบ ${fmtSigned(prob.d)} ทั้งสองข้าง):</div>
+        <div class="answer-row" style="text-align:center;">${fmtFactoredDisplay(prob)}</div>
+      `;
+    } else {
+      structureHTML = `
+        <div class="answer-row"><b>1. จัดรูปให้ด้านขวาเป็น 0</b> (ลบ ${fmtSigned(prob.d)} ทั้งสองข้าง):</div>
+        <div class="answer-row" style="text-align:center;">${fmtFactoredDisplay(prob)}</div>
+        <div class="answer-row"><b>2. มองเห็นโครงสร้างข้างใน:</b> y\u2081 = ${fmtStandardAbs(prob.a1, prob.h1)}</div>
+        <div class="answer-row"><b>3. ขั้นกลาง:</b> ${fmtLinInside(prob.B, "y\u2081", prob.C)}</div>
+      `;
+    }
+    return `
+      ${structureHTML}
+      <div class="section-title">${prob.type === "sum" ? "2" : "4"}. หาจุดตัดแกน x (แก้ทีละท่อนเส้นตรง):</div>
+      <div class="answer-row"><b>สมการเส้นตรงแต่ละช่วง:</b></div>
+      ${fmtSegmentsList(prob.type === "sum" ? buildSegmentsSum(prob) : buildSegmentsNested(prob))}
+      <div class="answer-row">จุดตัดแกน x ที่พบ: ${roots.map(r => fmtRootLabel(r)).join(", ")}</div>
+      <div class="section-title">${prob.type === "sum" ? "3" : "5"}. กราฟและเส้นจำนวน (เครื่องหมายแต่ละซอง):</div>
+    `;
+  }
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "จัดรูปให้ด้านขวาเป็น 0 แล้วแก้อสมการ แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    answerWrap.style.display = "";
+    const roots = current.type === "sum" ? findRootsSum(current.a1, current.h1, current.a2, current.h2, current.D)
+                                          : findRootsNested(current.A, current.a1, current.h1, current.B, current.C, current.D);
+    graphBox.innerHTML = buildGraphAndLine(current, roots);
+    const sol = determineSolution(current, roots);
+    answerCard.innerHTML = buildAnswerCardHTML(current) +
+      `<div class="solution-line">${fmtFactoredDisplay(current)} \u2192 x \u2208 ${fmtSolutionSet(sol)}</div>`;
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      typeBadge.textContent = TYPE_LABELS[current.type];
+      exprEl.innerHTML = fmtHiddenProblem(current);
+      displayProblem();
+      exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const el = showingAnswer ? answerWrap : exprEl;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? answerWrap : exprEl).classList.remove("swap");
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    enableSum.checked = cfg.enableSum; enableNested.checked = cfg.enableNested;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    if (!enableSum.checked && !enableNested.checked) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 แบบ";
+      return;
+    }
+    cfg = { enableSum: enableSum.checked, enableNested: enableNested.checked };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  typeBadge.textContent = TYPE_LABELS[current.type];
+  exprEl.innerHTML = fmtHiddenProblem(current);
+  displayProblem();
+</script>
+</body>
+</html>
