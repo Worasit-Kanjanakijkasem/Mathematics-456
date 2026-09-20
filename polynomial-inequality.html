@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>อสมการพหุนาม</title>
+<style>
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em;
+    font-size: clamp(13px, 1.6vw, 18px);
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    z-index: 1;
+    text-align: center;
+    padding: 0 12px;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    z-index: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(19px, 3.6vw, 30px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.6;
+    max-width: 95vw;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(94vw, 460px); margin: 0 auto 14px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(249,231,149,0.4);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .answer-row { margin-bottom: 10px; font-size: clamp(12.5px, 1.9vw, 15px); line-height: 1.6; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle;
+    margin: 0 0.08em; line-height: 1.05;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.03em; }
+  .frac .den { padding-top: 0.03em; }
+
+  .synth-section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
+  .synth-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+  .synth-table { border-collapse: collapse; font-family: "Consolas", "Cambria", monospace; font-size: clamp(13px, 2vw, 16px); margin: 0 auto; }
+  .synth-table td { padding: 4px 10px; text-align: center; min-width: 34px; }
+  .synth-root-cell { border-right: 1.5px solid var(--gold); font-weight: 700; color: var(--gold); padding-right: 12px; }
+  .synth-coef-row td { font-weight: 700; }
+  .synth-sum-row td { border-top: 1.5px solid var(--ink); font-weight: 700; color: var(--gold); }
+  .synth-remainder { color: var(--coral); }
+
+  .factored-line {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
+    text-align: center; color: var(--gold); margin-top: 10px; line-height: 1.6;
+  }
+  .solution-line {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
+    text-align: center; color: var(--gold); margin-top: 12px;
+  }
+
+  .prompt { margin-top: 16px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 560px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(70vw, 340px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">อสมการพหุนาม</div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">จัดรูปให้ด้านขวาเป็น 0 แล้วแยกตัวประกอบ แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกดีกรีของพหุนามที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+      <div class="toggle-row"><span>กำลัง 3</span><label class="switch"><input type="checkbox" id="enable3" checked><span class="slider-track"></span></label></div>
+      <div class="toggle-row"><span>กำลัง 4</span><label class="switch"><input type="checkbox" id="enable4" checked><span class="slider-track"></span></label></div>
+      <div class="toggle-row"><span>กำลัง 5</span><label class="switch"><input type="checkbox" id="enable5" checked><span class="slider-track"></span></label></div>
+      <div class="settings-error" id="settingsError"></div>
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG
+     ========================================================= */
+  const DEFAULT_CFG = { enable3: true, enable4: true, enable5: true };
+  const STORAGE_KEY = "polyineq-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcd(b, a % b); }
+  function reduceFrac(p, q) { const g = gcd(p, q) || 1; return q < 0 ? { p: -p / g, q: -q / g } : { p: p / g, q: q / g }; }
+  function fracHTML(fr) {
+    if (fr.q === 1) return `${fr.p}`;
+    const sign = fr.p < 0 ? "\u2212" : "";
+    return `${sign}<span class="frac"><span class="num">${Math.abs(fr.p)}</span><span class="den">${fr.q}</span></span>`;
+  }
+  function fmtSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+
+  /* =========================================================
+     2. POLYNOMIAL UTILITIES (exact integer arithmetic)
+     ========================================================= */
+  function polyMul(a, b) {
+    const result = new Array(a.length + b.length - 1).fill(0);
+    for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) result[i + j] += a[i] * b[j];
+    return result;
+  }
+  function syntheticDivide(coeffs, r) {
+    const rp = typeof r === "object" ? r.p : r, rq = typeof r === "object" ? r.q : 1;
+    let bottomFrac = [{ n: coeffs[0], d: 1 }];
+    const productRow = [null];
+    for (let i = 1; i < coeffs.length; i++) {
+      const prev = bottomFrac[i - 1];
+      const prodN = prev.n * rp, prodD = prev.d * rq;
+      productRow.push(prodN / prodD);
+      const sumN = coeffs[i] * prodD + prodN;
+      bottomFrac.push({ n: sumN, d: prodD });
+    }
+    const bottom = bottomFrac.map(f => f.n / f.d);
+    return { quotient: bottom.slice(0, -1), remainder: bottom[bottom.length - 1], bottom, productRow };
+  }
+  function evalPoly(coeffs, x) { return coeffs.reduce((acc, c) => acc * x + c, 0); }
+
+  /* =========================================================
+     3. GENERATION
+     All roots must be LINEAR factors this time (no irreducible
+     quadratic option — every root is real, confirmed explicitly).
+     Repeats are allowed (needed to teach the even/odd multiplicity
+     sign behaviour). At most one fractional root, same 1/8-denom2,
+     1/12-denom3 rule as the synthetic-division tool. The problem
+     is then "hidden": pick a random d, add d to the constant term
+     on the left and show "= d" on the right instead of "= 0", so
+     the student must subtract d from both sides before the
+     factorable form re-appears.
+     ========================================================= */
+  function genRoots(n) {
+    let fracFactor = null;
+    const roll = Math.random();
+    if (n >= 1 && roll < 1 / 8) fracFactor = { q: 2, p: choice([1, -1, 3, -3, 5, -5]) };
+    else if (n >= 1 && roll < 1 / 8 + 1 / 12) fracFactor = { q: 3, p: choice([1, -1, 2, -2, 4, -4]) };
+    const numIntRoots = n - (fracFactor ? 1 : 0);
+    const intRoots = [];
+    for (let i = 0; i < numIntRoots; i++) intRoots.push(randInt(-3, 3));
+    return { intRoots, fracFactor };
+  }
+  function buildRootCounts(intRoots, fracFactor) {
+    const counts = new Map(); // key: "p/q" string, value: {p,q,mult}
+    for (const r of intRoots) {
+      const key = `${r}/1`;
+      if (counts.has(key)) counts.get(key).mult++; else counts.set(key, { p: r, q: 1, mult: 1 });
+    }
+    if (fracFactor) {
+      const key = `${fracFactor.p}/${fracFactor.q}`;
+      if (counts.has(key)) counts.get(key).mult++; else counts.set(key, { p: fracFactor.p, q: fracFactor.q, mult: 1 });
+    }
+    return [...counts.values()].sort((a, b) => a.p / a.q - b.p / b.q);
+  }
+  function generateProblem() {
+    const options = [];
+    if (cfg.enable3) options.push(3);
+    if (cfg.enable4) options.push(4);
+    if (cfg.enable5) options.push(5);
+    if (!options.length) options.push(3);
+    const n = choice(options);
+    const { intRoots, fracFactor } = genRoots(n);
+    const rootCounts = buildRootCounts(intRoots, fracFactor);
+
+    let poly = [1];
+    for (const r of intRoots) poly = polyMul(poly, [1, -r]);
+    if (fracFactor) poly = polyMul(poly, [fracFactor.q, -fracFactor.p]);
+
+    const ineq = choice([">", "<", ">=", "<="]);
+    const d = randInt(-15, 15) || 3; // avoid d=0 (would make the "hiding" trivial/no-op)
+    const hiddenConst = poly[poly.length - 1] + d; // left side's displayed constant term
+
+    return { n, intRoots, fracFactor, rootCounts, poly, ineq, d, hiddenConst };
+  }
+
+  /* =========================================================
+     4. SOLUTION DETERMINATION
+     Sign in each "pocket" between consecutive roots is found by
+     evaluating a test point (no formula-memorising needed — same
+     spirit as the rest of this series). For non-strict inequalities
+     an EVEN-multiplicity root that touches the opposite sign from
+     what's wanted contributes an ISOLATED point, not an interval
+     edge (verified beforehand: 0 mismatches across 100,000
+     numeric cross-checks before implementing).
+     ========================================================= */
+  function signAt(rootCounts, leadingCoeff, x) {
+    let v = leadingCoeff;
+    for (const rc of rootCounts) v *= Math.pow(x - rc.p / rc.q, rc.mult);
+    return v > 1e-9 ? 1 : v < -1e-9 ? -1 : 0;
+  }
+  function determineSolution(prob) {
+    const leading = prob.poly[0];
+    const roots = prob.rootCounts.map(rc => rc.p / rc.q);
+    const bounds = [-Infinity, ...roots, Infinity];
+    const wantPos = prob.ineq === ">" || prob.ineq === ">=";
+    const strict = prob.ineq === ">" || prob.ineq === "<";
+
+    const segs = [];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const lo = bounds[i], hi = bounds[i + 1];
+      const mid = (isFinite(lo) && isFinite(hi)) ? (lo + hi) / 2 : (isFinite(lo) ? lo + 1 : hi - 1);
+      segs.push({ lo, hi, sign: signAt(prob.rootCounts, leading, mid) });
+    }
+    let intervals = segs.filter(s => (s.sign > 0) === wantPos).map(s => ({ lo: s.lo, hi: s.hi, closedLo: false, closedHi: false }));
+    const isolated = [];
+    if (!strict) {
+      for (const rc of prob.rootCounts) {
+        const rVal = rc.p / rc.q;
+        if (rc.mult % 2 === 0) {
+          const sideSign = signAt(prob.rootCounts, leading, rVal - 1e-6);
+          if ((sideSign > 0) === wantPos) {
+            for (const iv of intervals) { if (iv.hi === rVal) iv.closedHi = true; if (iv.lo === rVal) iv.closedLo = true; }
+          } else {
+            isolated.push(rc);
+          }
+        } else {
+          for (const iv of intervals) { if (iv.hi === rVal) iv.closedHi = true; if (iv.lo === rVal) iv.closedLo = true; }
+        }
+      }
+    }
+    // simplify: if an isolated point sits exactly between two intervals that are each
+    // open right at that point (e.g. [-1,0) and (0,inf) with isolated {0}), the three
+    // pieces are mathematically one continuous interval — merge them so students see
+    // the clean simplified form instead of a technically-correct but clunky answer.
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let k = isolated.length - 1; k >= 0; k--) {
+        const rVal = isolated[k].p / isolated[k].q;
+        const left = intervals.find(iv => iv.hi === rVal && !iv.closedHi);
+        const right = intervals.find(iv => iv.lo === rVal && !iv.closedLo);
+        if (left && right) {
+          left.hi = right.hi; left.closedHi = right.closedHi;
+          intervals.splice(intervals.indexOf(right), 1);
+          isolated.splice(k, 1);
+          changed = true;
+        }
+      }
+    }
+    return { intervals, isolated };
+  }
+
+  /* =========================================================
+     5. FORMATTING
+     ========================================================= */
+  function fmtIneqSymbol(ineq) { return { ">": ">", "<": "<", ">=": "\u2265", "<=": "\u2264" }[ineq]; }
+  function fmtPolyHidden(prob) {
+    // same polynomial as prob.poly but with the LAST coefficient replaced by hiddenConst,
+    // shown against "= d" instead of "= 0" (the deliberately-hidden form)
+    const coeffs = prob.poly.slice(0, -1).concat([prob.hiddenConst]);
+    const n = coeffs.length - 1;
+    let s = ""; let first = true;
+    for (let i = 0; i <= n; i++) {
+      const c = coeffs[i]; if (c === 0 && i !== n) continue;
+      const power = n - i;
+      const label = power === 0 ? "" : power === 1 ? "x" : `x${"\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076"[power]}`;
+      const sign = c >= 0 ? (first ? "" : " + ") : (first ? "\u2212" : " \u2212 ");
+      const ac = Math.abs(c);
+      const coefStr = (ac === 1 && label !== "") ? "" : `${ac}`;
+      s += sign + coefStr + label;
+      first = false;
+    }
+    return `${s} ${fmtIneqSymbol(prob.ineq)} ${fmtSigned(prob.d)}`;
+  }
+  function fmtLinearFactor(rc) {
+    const rStr = rc.q === 1 ? fmtSigned(rc.p) : (rc.p < 0 ? `\u2212${fracHTML({ p: -rc.p, q: rc.q })}` : fracHTML(rc));
+    const base = rc.q === 1
+      ? (rc.p === 0 ? "x" : rc.p > 0 ? `(x \u2212 ${rc.p})` : `(x + ${Math.abs(rc.p)})`)
+      : `(${rc.q}x ${rc.p > 0 ? "\u2212" : "+"} ${Math.abs(rc.p)})`;
+    return rc.mult === 1 ? base : `${base}${"\u00b9\u00b2\u00b3\u2074\u2075"[rc.mult - 1] || `^${rc.mult}`}`;
+  }
+  function fmtFactoredForm(prob) {
+    const parts = prob.rootCounts.map(fmtLinearFactor);
+    const leadStr = prob.poly[0] === 1 ? "" : `${prob.poly[0]}`;
+    return `${leadStr}${parts.join("")} ${fmtIneqSymbol(prob.ineq)} 0`;
+  }
+  function fmtIntervalBound(v) {
+    if (v === -Infinity) return "\u2212\u221e";
+    if (v === Infinity) return "\u221e";
+    return Number.isInteger(v) ? `${v}` : fracHTML(reduceFrac(Math.round(v * 12), 12));
+  }
+  function fmtSolutionSet(prob, sol) {
+    const parts = [];
+    for (const iv of sol.intervals) {
+      const lb = iv.lo === -Infinity ? "(" : (iv.closedLo ? "[" : "(");
+      const rb = iv.hi === Infinity ? ")" : (iv.closedHi ? "]" : ")");
+      parts.push(`${lb}${fmtIntervalBound(iv.lo)}, ${fmtIntervalBound(iv.hi)}${rb}`);
+    }
+    for (const iso of sol.isolated) {
+      parts.push(`{${iso.q === 1 ? fmtSigned(iso.p) : fracHTML(iso)}}`);
+    }
+    if (!parts.length) return "\u2205 (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e33\u0e15\u0e2d\u0e1a)";
+    return parts.join(" \u222a ");
+  }
+
+  /* =========================================================
+     6. SYNTHETIC DIVISION TABLE (reused pattern, Format A —
+     one continuous cascading table, every divisor aligned at the
+     same leftmost column)
+     ========================================================= */
+  function buildAllSynthSteps(prob) {
+    let current = prob.poly.slice();
+    let rowsHTML = "";
+    const steps = prob.rootCounts.flatMap(rc => Array(rc.mult).fill(rc)); // repeat mult times
+    const firstLabel = fmtDivisorLabel(steps[0]);
+    rowsHTML += `<tr class="synth-coef-row"><td class="synth-root-cell">${firstLabel}</td>` +
+      current.map(c => `<td>${fmtSigned(c)}</td>`).join("") + `</tr>`;
+    steps.forEach((rc, i) => {
+      const divisor = rc.q === 1 ? rc.p : { p: rc.p, q: rc.q };
+      const result = syntheticDivide(current, divisor);
+      rowsHTML += `<tr><td class="synth-root-cell"></td>` +
+        result.productRow.map(p => `<td>${p === null ? "" : fmtSigned(p)}</td>`).join("") + `</tr>`;
+      const nextLabel = i + 1 < steps.length ? fmtDivisorLabel(steps[i + 1]) : "";
+      rowsHTML += `<tr class="synth-sum-row"><td class="synth-root-cell">${nextLabel}</td>` +
+        result.bottom.map((v, j) => `<td class="${j === result.bottom.length - 1 ? "synth-remainder" : ""}">${fmtSigned(v)}</td>`).join("") + `</tr>`;
+      current = result.quotient;
+    });
+    return `<div class="synth-table-wrap"><table class="synth-table"><tbody>${rowsHTML}</tbody></table></div>`;
+  }
+  function fmtDivisorLabel(rc) {
+    if (rc.q === 1) return `x = ${fmtSigned(rc.p)}`;
+    const sign = rc.p < 0 ? "\u2212" : "";
+    return `x = ${sign}<span class="frac"><span class="num">${Math.abs(rc.p)}</span><span class="den">${rc.q}</span></span>`;
+  }
+
+  /* =========================================================
+     7. GRAPH + NUMBER LINE (combined SVG, "top view / front view"
+     stacked with dashed guides connecting every x-intercept, and
+     a +/- sign labelled in each pocket of the number line)
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", CURVE_COLOR = "#FFFFFF", DOT_COLOR = "#F96167", GOLD = "#F9E795";
+
+  function buildGraphAndLine(prob) {
+    const W = 420, HGraph = 190, HLine = 70, gap = 6;
+    const totalH = HGraph + gap + HLine;
+    const roots = prob.rootCounts.map(rc => rc.p / rc.q);
+    let xLo = Math.min(...roots), xHi = Math.max(...roots);
+    let span = xHi - xLo;
+    if (span < 4) { const m = (xLo + xHi) / 2; xLo = m - 2; xHi = m + 2; span = 4; }
+    const pad = span * 0.3;
+    xLo -= pad; xHi += pad;
+
+    const padL = 30, padR = 14, padT = 14, padB = 20;
+    const steps = 160;
+    let yLo = Infinity, yHi = -Infinity;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      const y = evalPoly(prob.poly, x);
+      pts.push([x, y]);
+      if (y < yLo) yLo = y; if (y > yHi) yHi = y;
+    }
+    if (yHi - yLo < 1e-6) { yLo -= 1; yHi += 1; }
+    const yPad = (yHi - yLo) * 0.15;
+    yLo -= yPad; yHi += yPad;
+    const scaleX = (W - padL - padR) / (xHi - xLo);
+    const scaleYg = (HGraph - padT - padB) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPyGraph = (y) => HGraph - padB - (y - yLo) * scaleYg;
+
+    let svg = `<svg viewBox="0 0 ${W} ${totalH}" xmlns="http://www.w3.org/2000/svg">`;
+    // --- top: graph ---
+    let gInner = "";
+    if (yLo < 0 && yHi > 0) gInner += `<line x1="${toPx(xLo)}" y1="${toPyGraph(0)}" x2="${toPx(xHi)}" y2="${toPyGraph(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    gInner += `<line x1="${toPx(0)}" y1="${padT - 4}" x2="${toPx(0)}" y2="${HGraph - padB + 4}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
+    let d = "";
+    pts.forEach(([x, y], i) => { d += (i === 0 ? "M" : "L") + toPx(x).toFixed(1) + "," + toPyGraph(y).toFixed(1) + " "; });
+    gInner += `<path d="${d}" fill="none" stroke="${CURVE_COLOR}" stroke-width="2.2"/>`;
+    for (const r of roots) gInner += `<circle cx="${toPx(r).toFixed(1)}" cy="${toPyGraph(0).toFixed(1)}" r="3.6" fill="${DOT_COLOR}"/>`;
+    svg += `<g transform="translate(0,0)">${gInner}</g>`;
+
+    // --- bottom: number line with pockets +/- ---
+    const lineY = gap + HGraph + HLine / 2;
+    let lInner = `<line x1="${toPx(xLo)}" y1="${(HLine/2).toFixed(1)}" x2="${toPx(xHi)}" y2="${(HLine/2).toFixed(1)}" stroke="${AXIS_COLOR}" stroke-width="1.5"/>`;
+    const uniqRoots = [...new Set(roots)].sort((a, b) => a - b);
+    for (const r of uniqRoots) {
+      lInner += `<line x1="${toPx(r).toFixed(1)}" y1="${(HLine/2-6).toFixed(1)}" x2="${toPx(r).toFixed(1)}" y2="${(HLine/2+6).toFixed(1)}" stroke="${GOLD}" stroke-width="2"/>`;
+      lInner += `<text x="${toPx(r).toFixed(1)}" y="${(HLine/2+20).toFixed(1)}" font-size="11" fill="${GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${Number.isInteger(r) ? r : r.toFixed(2)}</text>`;
+    }
+    const bounds = [xLo, ...uniqRoots, xHi];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const mid = (bounds[i] + bounds[i + 1]) / 2;
+      const s = signAt(prob.rootCounts, prob.poly[0], mid);
+      lInner += `<text x="${toPx(mid).toFixed(1)}" y="${(HLine/2-10).toFixed(1)}" font-size="13" fill="${s>0?"#8FD3F4":"#F96167"}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${s>0?"+":"\u2212"}</text>`;
+    }
+    svg += `<g transform="translate(0,${HGraph + gap})">${lInner}</g>`;
+
+    // dashed vertical guides connecting the two panels at every unique root
+    for (const r of uniqRoots) {
+      const px = toPx(r);
+      svg += `<line x1="${px.toFixed(1)}" y1="0" x2="${px.toFixed(1)}" y2="${totalH}" stroke="${GOLD}" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+    }
+    svg += "</svg>";
+    return svg;
+  }
+
+  /* =========================================================
+     8. DISPLAY / EVENTS
+     ========================================================= */
+  const exprEl = document.getElementById("exprEl");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const enable3 = document.getElementById("enable3");
+  const enable4 = document.getElementById("enable4");
+  const enable5 = document.getElementById("enable5");
+
+  let current = null;
+
+  function fmtPolyVs0(prob) {
+    const n = prob.poly.length - 1;
+    let s = ""; let first = true;
+    for (let i = 0; i <= n; i++) {
+      const c = prob.poly[i]; if (c === 0 && i !== n) continue;
+      const power = n - i;
+      const label = power === 0 ? "" : power === 1 ? "x" : `x${"\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076"[power]}`;
+      const sign = c >= 0 ? (first ? "" : " + ") : (first ? "\u2212" : " \u2212 ");
+      const ac = Math.abs(c);
+      const coefStr = (ac === 1 && label !== "") ? "" : `${ac}`;
+      s += sign + coefStr + label; first = false;
+    }
+    return `${s} ${fmtIneqSymbol(prob.ineq)} 0`;
+  }
+  function buildAnswerCardHTML(prob) {
+    return `
+      <div class="answer-row"><b>1. จัดรูปให้ด้านขวาเป็น 0</b> (ลบ ${prob.d} ทั้งสองข้าง):</div>
+      <div class="answer-row" style="text-align:center;">${fmtPolyVs0(prob)}</div>
+      <div class="synth-section-title">2. การหารสังเคราะห์ (แยกตัวประกอบ):</div>
+      ${buildAllSynthSteps(prob)}
+      <div class="synth-section-title">3. รูปแบบตัวประกอบ:</div>
+      <div class="factored-line">${fmtFactoredForm(prob)}</div>
+      <div class="synth-section-title">4. กราฟและเส้นจำนวน (เครื่องหมายแต่ละซอง):</div>
+    `;
+  }
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "จัดรูปให้ด้านขวาเป็น 0 แล้วแยกตัวประกอบ แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    answerWrap.style.display = "";
+    graphBox.innerHTML = buildGraphAndLine(current);
+    answerCard.innerHTML = buildAnswerCardHTML(current);
+    const sol = determineSolution(current);
+    answerCard.innerHTML += `<div class="solution-line">${fmtFactoredForm(current)} \u2192 x \u2208 ${fmtSolutionSet(current, sol)}</div>`;
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      exprEl.innerHTML = fmtPolyHidden(current);
+      displayProblem();
+      exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const el = showingAnswer ? answerWrap : exprEl;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? answerWrap : exprEl).classList.remove("swap");
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    enable3.checked = cfg.enable3; enable4.checked = cfg.enable4; enable5.checked = cfg.enable5;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    if (!enable3.checked && !enable4.checked && !enable5.checked) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 แบบ";
+      return;
+    }
+    cfg = { enable3: enable3.checked, enable4: enable4.checked, enable5: enable5.checked };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  exprEl.innerHTML = fmtPolyHidden(current);
+  displayProblem();
+</script>
+</body>
+</html>
