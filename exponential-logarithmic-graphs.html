@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>กราฟเอ็กซ์โพเนนเชียลและลอการิทึม</title>
+<style>
+  :root {
+    --navy: #2F3C7E; --navy-deep: #232D63; --coral: #F96167; --coral-deep: #E14A50;
+    --gold: #F9E795; --ink: #FFFFFF; --muted: #B9C0E0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy); color: var(--ink); height: 100dvh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    user-select: none; position: relative;
+  }
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  .eyebrow {
+    letter-spacing: 0.12em; font-size: clamp(13px, 1.6vw, 18px); font-weight: 700; color: var(--gold);
+    text-transform: uppercase; margin-bottom: 8px; z-index: 1; text-align: center; padding: 0 12px;
+  }
+  .type-badge { font-size: clamp(12px, 1.6vw, 15px); color: var(--muted); margin-bottom: 6px; z-index: 1; }
+
+  .stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; width: 100%; z-index: 1; padding: 10px 20px; overflow-y: auto;
+  }
+
+  .expr {
+    font-family: "Cambria", "Georgia", serif; font-size: clamp(19px, 3.6vw, 30px); font-weight: 700;
+    text-align: center; line-height: 1.6; max-width: 95vw; transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .expr.swap { opacity: 0; transform: scale(0.94); }
+
+  .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
+  .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
+
+  .graph-box { width: min(94vw, 420px); margin: 0 auto 14px; }
+  .graph-box svg { width: 100%; height: auto; display: block; }
+
+  .answer-card {
+    background: rgba(255,255,255,0.06); border: 1.5px solid rgba(249,231,149,0.4); border-radius: 16px;
+    padding: 16px 20px;
+  }
+  .answer-row { margin-bottom: 10px; font-size: clamp(13px, 2vw, 15.5px); line-height: 1.6; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-row b { color: var(--gold); }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 0.08em; line-height: 1.05; }
+  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.03em; }
+  .frac .den { padding-top: 0.03em; }
+  .section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
+
+  .prompt { margin-top: 16px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
+
+  .controls {
+    display: flex; gap: 14px; width: 100%; max-width: 760px;
+    padding: 8px 24px clamp(12px, 3vh, 30px); z-index: 1; flex-shrink: 0;
+  }
+  button {
+    border: none; border-radius: 20px; font-family: inherit; font-weight: 700; cursor: pointer;
+    -webkit-appearance: none; transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-next { flex: 2; background: var(--coral); color: var(--ink); font-size: clamp(13px, 2.1vw, 22px); padding: clamp(12px, 2.4vh, 20px) 10px; white-space: nowrap; }
+  .btn-toggle { flex: 2; background: var(--navy-deep); color: var(--gold); border: 2px solid var(--gold); font-size: clamp(13px, 1.9vw, 20px); padding: clamp(12px, 2.4vh, 20px) 16px; }
+  .btn-end { flex: 1; background: transparent; color: var(--muted); border: 2px solid var(--navy-deep); font-size: clamp(12px, 1.6vw, 18px); padding: clamp(12px, 2.4vh, 20px) 12px; }
+  .btn-end:active { background: var(--navy-deep); }
+
+  .end-screen {
+    position: fixed; inset: 0; background: var(--navy-deep);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(32px, 6vw, 56px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 22px); margin-bottom: 36px; }
+  .btn-restart { background: var(--gold); color: var(--navy-deep); font-size: clamp(17px, 2.4vw, 22px); padding: 18px 40px; border-radius: 20px; }
+
+  .gear-btn {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; z-index: 2; padding: 0;
+  }
+  .gear-btn:active { background: rgba(255,255,255,0.18); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(20,24,54,0.75);
+    display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; overflow-y: auto;
+  }
+  .settings-overlay.show { display: flex; }
+  .settings-panel {
+    background: var(--navy-deep); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 -28px 22px -24px rgba(0,0,0,0.45);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .settings-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .settings-panel .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .toggle-row span { font-size: 13.5px; font-weight: 700; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-track { position: absolute; inset: 0; background: rgba(255,255,255,0.2); border-radius: 24px; transition: 0.2s; cursor: pointer; }
+  .slider-track:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .slider-track { background: var(--coral); }
+  .switch input:checked + .slider-track:before { transform: translateX(20px); }
+  .settings-error { color: var(--coral); font-size: 13px; font-weight: 700; margin: 4px 0 6px; min-height: 16px; }
+  .settings-actions { display: flex; gap: 12px; margin-top: 10px; }
+  .btn-cancel { flex: 1; background: transparent; border: 2px solid rgba(255,255,255,0.15); color: var(--muted); font-size: 15px; padding: 14px; }
+  .btn-save { flex: 1; background: var(--coral); color: var(--ink); font-size: 15px; padding: 14px; }
+
+  @media (max-height: 560px) {
+    .settings-panel { padding: 16px 18px; max-height: 94vh; }
+    .answer-row { margin-bottom: 6px; }
+    .graph-box { width: min(70vw, 320px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
+
+  <div class="eyebrow">กราฟเอ็กซ์โพเนนเชียลและลอการิทึม</div>
+  <div class="type-badge" id="typeBadge"></div>
+
+  <div class="stage">
+    <div class="expr" id="exprEl">…</div>
+    <div class="answer-wrap" id="answerWrap" style="display:none;">
+      <div class="graph-box" id="graphBox"></div>
+      <div class="answer-card" id="answerCard"></div>
+    </div>
+    <div class="prompt" id="promptEl">จัดรูปเป็นมาตรฐาน แล้วร่างกราฟ แล้วกดดูเฉลย</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
+    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแล้ว สู้ๆ นะ! 🎉</div>
+    <div class="sub">ฝึกอีกรอบได้เลยถ้าอยากลองต่อ</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>ตั้งค่าการสุ่มโจทย์</h2>
+      <div class="desc">เลือกประเภทฟังก์ชันที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
+      <div class="toggle-row"><span>Exponential</span><label class="switch"><input type="checkbox" id="enableExp" checked><span class="slider-track"></span></label></div>
+      <div class="toggle-row"><span>Logarithmic</span><label class="switch"><input type="checkbox" id="enableLog" checked><span class="slider-track"></span></label></div>
+      <div class="settings-error" id="settingsError"></div>
+      <div class="settings-actions">
+        <button class="btn-cancel" id="cancelBtn">ยกเลิก</button>
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     1. CONFIG / UTILITIES
+     ========================================================= */
+  const DEFAULT_CFG = { enableExp: true, enableLog: true };
+  const STORAGE_KEY = "explog-cfg";
+  let cfg = { ...DEFAULT_CFG };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) cfg = { ...DEFAULT_CFG, ...saved };
+  } catch (e) {}
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function gcdInt(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcdInt(b, a % b); }
+  function reduceFrac(p, q) { const g = gcdInt(p, q) || 1; return q < 0 ? { p: -p / g, q: -q / g } : { p: p / g, q: q / g }; }
+  function fracHTML(fr) {
+    if (fr.q === 1) return fmtSigned(fr.p);
+    const sign = fr.p < 0 ? "\u2212" : "";
+    return `${sign}<span class="frac"><span class="num">${Math.abs(fr.p)}</span><span class="den">${fr.q}</span></span>`;
+  }
+  function fmtSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtCoeff(n) { if (n === 1) return ""; if (n === -1) return "\u2212"; return fmtSigned(n); }
+
+  /* =========================================================
+     2. GENERATION — EXPONENTIAL
+     Given DIRECTLY in standard form y=c*a^(x-h)+k with specific
+     numbers (verified: no ambiguity in this "numbers -> sketch"
+     direction, even though (c,h) pairs are individually
+     interchangeable in the abstract). Answer always uses the
+     SAME uniform method regardless of whether c=1 or h=0: shift
+     axes to (h,k), the curve there is simply c*a^X (verified
+     algebraically and numerically to hold for every (c,a,h,k)
+     combination, so no special-casing is needed for generation).
+     ========================================================= */
+  function genExp() {
+    const base = choice([2, 3, F(1, 2), F(1, 3)].map(v => typeof v === "object" ? v : { p: v, q: 1 }));
+    const c = choice([-3, -2, -1, 1, 2, 3]);
+    const h = randInt(-4, 4);
+    const k = randInt(-4, 4);
+    return { type: "exp", base, c, h, k };
+  }
+  function F(p, q) { return { p, q }; } // small helper used only in genExp's base list
+
+  /* =========================================================
+     3. GENERATION — LOGARITHMIC
+     Given in COMPACT form y = A*log_base(Bx+C) + D (the form that
+     actually needs conversion — deliberately keeping this the
+     "interesting" direction per the earlier discussion). B's sign
+     decides which of the two verified formulas applies:
+       B>0: h=-C/B, k=D+A*log_base(B),   standard: A*log_base(x-h)+k
+       B<0: h=-C/B, k=D+A*log_base(|B|), standard: A*log_base(h-x)+k (mirrored)
+     B is deliberately chosen as base^n (n possibly negative, giving
+     a fraction) so log_base(|B|) always comes out to the exact
+     integer n — verified beforehand this keeps k clean with 0
+     precision loss, rather than leaving a messy irrational-looking
+     decimal for k.
+     ========================================================= */
+  function genLog() {
+    const base = choice([2, 3]);
+    const n = randInt(-2, 3);
+    const absB = n >= 0 ? Math.pow(base, n) : reduceFrac(1, Math.pow(base, -n));
+    const absBVal = typeof absB === "object" ? absB.p / absB.q : absB;
+    const sign = choice([1, -1]);
+    const Bfrac = typeof absB === "object" ? { p: sign * absB.p, q: absB.q } : { p: sign * absB, q: 1 };
+    const C = randInt(-8, 8);
+    const A = choice([-2, -1, 1, 2]);
+    const D = randInt(-5, 5);
+    const h = reduceFrac(-C * Bfrac.q, Bfrac.p); // -C/B as an exact fraction
+    const k = D + A * n; // log_base(|B|) = n exactly, by construction
+    const isMirrored = sign < 0;
+    return { type: "log", base, A, B: Bfrac, C, D, h, k, isMirrored, n };
+  }
+  function generateProblem() {
+    const options = [];
+    if (cfg.enableExp) options.push("exp");
+    if (cfg.enableLog) options.push("log");
+    if (!options.length) options.push("exp");
+    return choice(options) === "exp" ? genExp() : genLog();
+  }
+
+  /* =========================================================
+     4. FORMATTING
+     ========================================================= */
+  function fmtBaseInline(base) {
+    return base.q === 1 ? `${base.p}` : fracHTML(base);
+  }
+  function fmtBaseForExponent(base) {
+    // when the base is a FRACTION and immediately followed by an exponent (base^X),
+    // wrap it in parentheses so the grouping is unambiguous (e.g. "(1/2)^(x-3)" not a
+    // bare stacked fraction jammed against a superscript, which reads unclearly as to
+    // whether the whole fraction or just its denominator is being raised to the power)
+    return base.q === 1 ? `${base.p}` : `(${fracHTML(base)})`;
+  }
+  function fmtBaseForExponentPlain(base) {
+    return base.q === 1 ? `${base.p}` : `(${base.p}/${base.q})`;
+  }
+  function fmtProblem(prob) {
+    if (prob.type === "exp") {
+      const baseStr = fmtBaseInline(prob.base);
+      const hStr = prob.h === 0 ? "x" : (prob.h > 0 ? `x \u2212 ${prob.h}` : `x + ${Math.abs(prob.h)}`);
+      const expPart = `${fmtBaseForExponent(prob.base)}<sup>${hStr}</sup>`;
+      const cPart = `${fmtCoeff(prob.c)}${expPart}`;
+      const kPart = prob.k === 0 ? "" : (prob.k > 0 ? ` + ${prob.k}` : ` \u2212 ${Math.abs(prob.k)}`);
+      return `y = ${cPart}${kPart}`;
+    } else {
+      const bStr = prob.B.q === 1 ? `${prob.B.p}` : fracHTML(prob.B);
+      const bxTerm = prob.B.p === prob.B.q ? "x" : (prob.B.p === -prob.B.q ? "\u2212x" : `${bStr}x`);
+      const cTerm = prob.C === 0 ? "" : (prob.C > 0 ? ` + ${prob.C}` : ` \u2212 ${Math.abs(prob.C)}`);
+      const dTerm = prob.D === 0 ? "" : (prob.D > 0 ? ` + ${prob.D}` : ` \u2212 ${Math.abs(prob.D)}`);
+      return `y = ${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(${bxTerm}${cTerm})${dTerm}`;
+    }
+  }
+  function fmtStandardForm(prob) {
+    if (prob.type === "exp") {
+      const baseStr = fmtBaseInline(prob.base);
+      const hStr = prob.h === 0 ? "x" : (prob.h > 0 ? `x \u2212 ${prob.h}` : `x + ${Math.abs(prob.h)}`);
+      const kPart = prob.k === 0 ? "" : (prob.k > 0 ? ` + ${prob.k}` : ` \u2212 ${Math.abs(prob.k)}`);
+      return `y = ${fmtCoeff(prob.c)}${fmtBaseForExponent(prob.base)}<sup>${hStr}</sup>${kPart}`;
+    } else {
+      const hLabel = fracHTML(prob.h);
+      // when h itself is negative, hLabel already carries its own minus sign (e.g. "-12"),
+      // so writing "x - hLabel" directly gives "x - -12" (a confusing double-minus with no
+      // separator) — wrap it in parentheses whenever h<0, exactly as flagged from the screenshot
+      const hNeg = prob.h.p < 0;
+      const hInParen = hNeg ? `(${hLabel})` : hLabel;
+      const inner = prob.isMirrored
+        ? `${hLabel} \u2212 x`
+        : `x \u2212 ${hInParen}`;
+      const kPart = prob.k === 0 ? "" : (prob.k > 0 ? ` + ${prob.k}` : ` \u2212 ${Math.abs(prob.k)}`);
+      return `y = ${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(${inner})${kPart}`;
+    }
+  }
+
+  function fmtProblemPlainInner(prob) { return fmtProblem(prob).replace(/^y = /, ""); }
+  function fracHTMLPlain(fr) { return fr.q === 1 ? fmtSigned(fr.p) : `${fmtSigned(fr.p)}/${fr.q}`; }
+  function fmtProblemPlain(prob) {
+    // SAME notation as fmtProblem (matching the problem statement exactly, per explicit
+    // request — never introduce a new letter like "A" for exponential's own coefficient,
+    // which is called c throughout; log correctly keeps A,B,C,D since that IS how its
+    // problem is already labelled), but plain text only (SVG <text> cannot render <sup>/<sub>)
+    if (prob.type === "exp") {
+      const baseStr = prob.base.q === 1 ? `${prob.base.p}` : `${prob.base.p}/${prob.base.q}`;
+      const hStr = prob.h === 0 ? "x" : (prob.h > 0 ? `x-${prob.h}` : `x+${Math.abs(prob.h)}`);
+      const kPart = prob.k === 0 ? "" : (prob.k > 0 ? `+${prob.k}` : `-${Math.abs(prob.k)}`);
+      return `y = ${fmtCoeff(prob.c)}${fmtBaseForExponentPlain(prob.base)}^(${hStr})${kPart}`;
+    } else {
+      const bStr = prob.B.q === 1 ? `${prob.B.p}` : `${prob.B.p}/${prob.B.q}`;
+      const bxTerm = prob.B.p === prob.B.q ? "x" : (prob.B.p === -prob.B.q ? "-x" : `${bStr}x`);
+      const cTerm = prob.C === 0 ? "" : (prob.C > 0 ? `+${prob.C}` : `-${Math.abs(prob.C)}`);
+      const dTerm = prob.D === 0 ? "" : (prob.D > 0 ? `+${prob.D}` : `-${Math.abs(prob.D)}`);
+      return `y = ${fmtCoeff(prob.A)}log${prob.base}(${bxTerm}${cTerm})${dTerm}`;
+    }
+  }
+
+  /* =========================================================
+     5. GRAPH — always shows the ORIGINAL axes (gray) plus dashed
+     gold lines at x=h and y=k (the "new axes"), per the explicit
+     request to visualize the (0,0)->(h,k) shift directly.
+     ========================================================= */
+  const AXIS_COLOR = "#7A8296", CURVE_COLOR = "#FFFFFF", GOLD = "#F9E795", ASYM_COLOR = "#F96167";
+
+  function buildGraph(prob) {
+    const W = 380, H = 300, padL = 34, padR = 16, padT = 30, padB = 26;
+    let hVal, kVal, evalFn, xLo, xHi;
+
+    if (prob.type === "exp") {
+      hVal = prob.h; kVal = prob.k;
+      const baseVal = prob.base.p / prob.base.q;
+      evalFn = (x) => prob.c * Math.pow(baseVal, x - hVal) + kVal;
+      xLo = Math.min(hVal - 4, 0); xHi = Math.max(hVal + 4, 0);
+    } else {
+      hVal = prob.h.p / prob.h.q; kVal = prob.k;
+      evalFn = prob.isMirrored
+        ? (x) => prob.A * Math.log(hVal - x) / Math.log(prob.base) + kVal
+        : (x) => prob.A * Math.log(x - hVal) / Math.log(prob.base) + kVal;
+      xLo = Math.min(prob.isMirrored ? hVal - 8 : hVal - 0.9, 0);
+      xHi = Math.max(prob.isMirrored ? hVal + 0.9 : hVal + 8, 0);
+    }
+
+    const steps = 150;
+    let yLo = Infinity, yHi = -Infinity;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const x = xLo + ((xHi - xLo) * i) / steps;
+      const y = evalFn(x);
+      if (isFinite(y)) { pts.push([x, y]); if (y < yLo) yLo = y; if (y > yHi) yHi = y; }
+    }
+    if (yHi - yLo < 1e-6) { yLo -= 1; yHi += 1; }
+    const yPad = (yHi - yLo) * 0.15;
+    yLo -= yPad; yHi += yPad;
+    // make sure the reference line y=k and the ORIGINAL x-axis (y=0) both stay visible
+    if (kVal < yLo) yLo = kVal - yPad; if (kVal > yHi) yHi = kVal + yPad;
+    if (0 < yLo) yLo = -yPad; if (0 > yHi) yHi = yPad;
+
+    const scaleX = (W - padL - padR) / (xHi - xLo);
+    const scaleY = (H - padT - padB) / (yHi - yLo);
+    const toPx = (x) => padL + (x - xLo) * scaleX;
+    const toPy = (y) => H - padB - (y - yLo) * scaleY;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    // original axes
+    if (yLo < 0 && yHi > 0) svg += `<line x1="${toPx(xLo)}" y1="${toPy(0)}" x2="${toPx(xHi)}" y2="${toPy(0)}" stroke="${AXIS_COLOR}" stroke-width="1.3"/>`;
+    if (xLo < 0 && xHi > 0) svg += `<line x1="${toPx(0)}" y1="${toPy(yHi)}" x2="${toPx(0)}" y2="${toPy(yLo)}" stroke="${AXIS_COLOR}" stroke-width="1.3"/>`;
+    // dashed reference lines at x=h and y=k (the "new axes")
+    svg += `<line x1="${toPx(hVal).toFixed(1)}" y1="${padT - 2}" x2="${toPx(hVal).toFixed(1)}" y2="${H - padB + 2}" stroke="${GOLD}" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+    svg += `<line x1="${padL - 2}" y1="${toPy(kVal).toFixed(1)}" x2="${W - padR + 2}" y2="${toPy(kVal).toFixed(1)}" stroke="${GOLD}" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+    const hDisplay = prob.type === "log" ? fracHTMLPlain(prob.h) : fmtSigned(hVal);
+    svg += `<text x="${(toPx(hVal) + 4).toFixed(1)}" y="${(padT + 10).toFixed(1)}" font-size="11" fill="${GOLD}" font-weight="700" font-family="Calibri, sans-serif">x=${hDisplay}</text>`;
+    svg += `<text x="${(W - padR - 4).toFixed(1)}" y="${(toPy(kVal) - 6).toFixed(1)}" font-size="11" fill="${GOLD}" font-weight="700" text-anchor="end" font-family="Calibri, sans-serif">y=${fmtSigned(kVal)}</text>`;
+    // the curve
+    let d = "";
+    pts.forEach(([x, y], i) => { d += (i === 0 ? "M" : "L") + toPx(x).toFixed(1) + "," + toPy(y).toFixed(1) + " "; });
+    svg += `<path d="${d}" fill="none" stroke="${CURVE_COLOR}" stroke-width="2.3"/>`;
+    // marker at the new origin (h,k)
+    svg += `<circle cx="${toPx(hVal).toFixed(1)}" cy="${toPy(kVal).toFixed(1)}" r="4" fill="${GOLD}"/>`;
+    // equation label ON the graph itself, using the SAME symbols (A/c, base) the answer
+    // text refers to, so viewers can see at a glance what each letter's actual value is
+    // (per explicit request — previously only the (h,k) reference lines were labelled)
+    const eqLabel = fmtProblemPlain(prob);
+    svg += `<text x="${(W / 2).toFixed(1)}" y="16" font-size="12" fill="${GOLD}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${eqLabel}</text>`;
+    svg += "</svg>";
+    return svg;
+  }
+
+  /* =========================================================
+     6. ANSWER CARD
+     ========================================================= */
+  function buildAnswerCard(prob) {
+    if (prob.type === "exp") {
+      const baseVal = prob.base.p / prob.base.q;
+      return `
+        <div class="answer-row"><b>1. รูปมาตรฐาน:</b> ${fmtProblem(prob)}  &nbsp;=&nbsp;  y = c\u00b7a<sup>(x\u2212h)</sup> + k &nbsp;<span style="color:var(--muted);">(c=${fmtSigned(prob.c)}, a=${fmtBaseInline(prob.base)}, h=${fmtSigned(prob.h)}, k=${fmtSigned(prob.k)})</span></div>
+        <div class="answer-row"><b>2. ย้ายแกนไปที่ (h,k) = (${fmtSigned(prob.h)}, ${fmtSigned(prob.k)}):</b> เมื่อมองผ่านแกนใหม่ (เส้นประ) กราฟจะเป็น y = ${fmtCoeff(prob.c)}${fmtBaseForExponent(prob.base)}<sup>x</sup> ธรรมดา (ไม่ต้องคำนวณอะไรเพิ่ม)</div>
+        <div class="answer-row"><b>3. เส้นกำกับแนวนอน:</b> y = ${fmtSigned(prob.k)} (เพราะ ${fmtBaseForExponent(prob.base)}<sup>x</sup> \u2192 0 เมื่อ x\u2192${baseVal > 1 ? "\u2212\u221e" : "+\u221e"})</div>
+        <div class="answer-row"><b>4. ทิศทาง:</b> ${baseVal > 1 ? "เพิ่มขึ้น" : "ลดลง"} (ฐาน ${baseVal > 1 ? ">1" : "อยู่ระหว่าง 0 ถึง 1"}) ${prob.c < 0 ? "\u0e41\u0e25\u0e30\u0e2a\u0e30\u0e17\u0e49\u0e2d\u0e19\u0e02\u0e36\u0e49\u0e19-\u0e25\u0e07 (\u0e40\u0e1e\u0e23\u0e32\u0e30 c<0)" : ""}</div>
+      `;
+    } else {
+      const hLabel = fracHTML(prob.h);
+      const bIsPos = !prob.isMirrored;
+      return `
+        <div class="answer-row"><b>1. รูปมาตรฐาน:</b> y = ${fmtProblemPlainInner(prob)}  =  A\u00b7log<sub>${prob.base}</sub>(Bx+C) + D &nbsp;<span style="color:var(--muted);">(A=${fmtSigned(prob.A)}, B=${prob.B.q === 1 ? fmtSigned(prob.B.p) : fracHTML(prob.B)}, C=${fmtSigned(prob.C)}, D=${fmtSigned(prob.D)}, \u0e10\u0e32\u0e19=${prob.base}, B\u0e40\u0e1b\u0e47\u0e19\u0e04\u0e48\u0e32${bIsPos ? "\u0e1a\u0e27\u0e01" : "\u0e25\u0e1a"})</span></div>
+        <div class="answer-row"><b>\u0e23\u0e39\u0e1b\u0e41\u0e1a\u0e1a\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e22\u0e49\u0e32\u0e22\u0e41\u0e01\u0e19:</b> y = ${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(${prob.isMirrored ? "h \u2212 x" : "x \u2212 h"}) + k &nbsp;<span style="color:var(--muted);">(\u0e43\u0e0a\u0e49\u0e04\u0e38\u0e13\u0e2a\u0e21\u0e1a\u0e31\u0e15\u0e34 log(MN)=log M+log N \u0e08\u0e31\u0e14\u0e23\u0e39\u0e1b\u0e01\u0e48\u0e2d\u0e19)</span></div>
+        <div class="answer-row"><b>2. หา h:</b> h = \u2212C/B = \u2212(${fmtSigned(prob.C)})/(${prob.B.p === prob.B.q ? 1 : prob.B.p === -prob.B.q ? -1 : fracHTML(prob.B)}) = ${hLabel}</div>
+        <div class="answer-row"><b>3. หา k (จุดสำคัญ):</b> k = D + A\u00d7log<sub>${prob.base}</sub>|B| = ${fmtSigned(prob.D)} + ${fmtSigned(prob.A)}\u00d7${fmtSigned(prob.n)} = ${fmtSigned(prob.k)}</div>
+        <div class="answer-row"><b>4. \u0e27\u0e34\u0e18\u0e35\u0e23\u0e48\u0e32\u0e07\u0e01\u0e23\u0e32\u0e1f:</b> ${bIsPos
+          ? `B \u0e40\u0e1b\u0e47\u0e19\u0e1a\u0e27\u0e01 \u2192 \u0e27\u0e32\u0e14\u0e01\u0e23\u0e32\u0e1f\u0e1b\u0e01\u0e15\u0e34 y=A\u00b7log<sub>${prob.base}</sub>(x\u2212h)+k \u0e44\u0e14\u0e49\u0e40\u0e25\u0e22`
+          : `B \u0e40\u0e1b\u0e47\u0e19\u0e25\u0e1a \u2192 \u0e15\u0e49\u0e2d\u0e07\u0e0a\u0e48\u0e27\u0e22\u0e23\u0e48\u0e32\u0e07\u0e08\u0e32\u0e01\u0e01\u0e23\u0e32\u0e1f\u0e1d\u0e31\u0e48\u0e07\u0e1a\u0e27\u0e01\u0e17\u0e35\u0e48\u0e04\u0e38\u0e49\u0e19\u0e40\u0e04\u0e22\u0e01\u0e48\u0e2d\u0e19: \u0e23\u0e48\u0e32\u0e07 y=${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(x\u2212(${hLabel})) \u0e01\u0e48\u0e2d\u0e19 (\u0e40\u0e2b\u0e21\u0e37\u0e2d\u0e19\u0e44\u0e21\u0e48\u0e21\u0e35\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e2b\u0e21\u0e32\u0e22\u0e25\u0e1a) \u0e41\u0e25\u0e49\u0e27<b>\u0e2a\u0e30\u0e17\u0e49\u0e2d\u0e19\u0e02\u0e49\u0e32\u0e21\u0e40\u0e2a\u0e49\u0e19\u0e15\u0e23\u0e07 x=${hLabel}</b> (\u0e40\u0e2a\u0e49\u0e19\u0e01\u0e33\u0e01\u0e31\u0e1a\u0e40\u0e14\u0e34\u0e21\u0e19\u0e31\u0e48\u0e19\u0e40\u0e2d\u0e07 \u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e41\u0e01\u0e19 y \u0e40\u0e27\u0e49\u0e19\u0e41\u0e15\u0e48 h=0 \u0e1e\u0e2d\u0e14\u0e35)`}</div>
+        <div class="answer-row"><b>5. \u0e2a\u0e21\u0e01\u0e32\u0e23\u0e17\u0e35\u0e48\u0e08\u0e31\u0e14\u0e23\u0e39\u0e1b\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e22\u0e49\u0e32\u0e22\u0e41\u0e01\u0e19:</b> ${fmtStandardForm(prob)}</div>
+        <div class="answer-row">\u0e22\u0e49\u0e32\u0e22\u0e01\u0e23\u0e32\u0e1f y = ${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(x) \u0e44\u0e1b\u0e17\u0e35\u0e48\u0e08\u0e38\u0e14 (h,k) = (${hLabel}, ${fmtSigned(prob.k)}) \u0e42\u0e14\u0e22\u0e2d\u0e49\u0e32\u0e07\u0e2d\u0e34\u0e07\u0e01\u0e31\u0e1a (0,0)${prob.isMirrored ? ` \u0e41\u0e25\u0e49\u0e27<b>\u0e2a\u0e30\u0e17\u0e49\u0e2d\u0e19\u0e20\u0e32\u0e1e\u0e14\u0e49\u0e27\u0e22\u0e40\u0e2a\u0e49\u0e19\u0e15\u0e23\u0e07 x=${hLabel}</b> (\u0e04\u0e48\u0e32 h \u0e08\u0e32\u0e01\u0e02\u0e49\u0e2d 2)` : ""}</div>
+        <div class="answer-row"><b>6. เส้นกำกับแนวตั้ง:</b> x = ${hLabel}, โดเมน: ${prob.isMirrored ? `x &lt; ${hLabel}` : `x &gt; ${hLabel}`}</div>
+      `;
+    }
+  }
+
+  /* =========================================================
+     7. DISPLAY / EVENTS
+     ========================================================= */
+  const TYPE_LABELS = { exp: "Exponential Function", log: "Logarithmic Function" };
+  const typeBadge = document.getElementById("typeBadge");
+  const exprEl = document.getElementById("exprEl");
+  const answerWrap = document.getElementById("answerWrap");
+  const graphBox = document.getElementById("graphBox");
+  const answerCard = document.getElementById("answerCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const gearBtn = document.getElementById("gearBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsError = document.getElementById("settingsError");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const enableExp = document.getElementById("enableExp");
+  const enableLog = document.getElementById("enableLog");
+
+  let current = null;
+
+  function displayProblem() {
+    exprEl.style.display = "";
+    answerWrap.style.display = "none";
+    promptEl.textContent = "จัดรูปเป็นมาตรฐาน แล้วร่างกราฟ แล้วกดดูเฉลย";
+  }
+  function displayAnswer() {
+    exprEl.style.display = "none";
+    answerWrap.style.display = "";
+    graphBox.innerHTML = buildGraph(current);
+    answerCard.innerHTML = buildAnswerCard(current);
+    promptEl.textContent = "นี่คือเฉลย";
+  }
+  function showNext() {
+    exprEl.classList.add("swap"); answerWrap.classList.add("swap");
+    setTimeout(() => {
+      current = generateProblem();
+      typeBadge.textContent = TYPE_LABELS[current.type];
+      exprEl.innerHTML = fmtProblem(current);
+      displayProblem();
+      exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
+    }, 150);
+  }
+  let showingAnswer = false;
+  function toggleAnswer() {
+    const el = showingAnswer ? answerWrap : exprEl;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) displayAnswer(); else displayProblem();
+      (showingAnswer ? answerWrap : exprEl).classList.remove("swap");
+    }, 150);
+  }
+
+  nextBtn.addEventListener("click", () => { showingAnswer = false; showNext(); });
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => { endScreen.classList.remove("show"); showingAnswer = false; showNext(); });
+
+  function openSettings() {
+    enableExp.checked = cfg.enableExp; enableLog.checked = cfg.enableLog;
+    settingsError.textContent = "";
+    settingsOverlay.classList.add("show");
+  }
+  function closeSettings() { settingsOverlay.classList.remove("show"); }
+  gearBtn.addEventListener("click", openSettings);
+  cancelBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) closeSettings(); });
+  saveBtn.addEventListener("click", () => {
+    if (!enableExp.checked && !enableLog.checked) {
+      settingsError.textContent = "ต้องเปิดอย่างน้อย 1 แบบ";
+      return;
+    }
+    cfg = { enableExp: enableExp.checked, enableLog: enableLog.checked };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    closeSettings();
+    showingAnswer = false; showNext();
+  });
+
+  current = generateProblem();
+  typeBadge.textContent = TYPE_LABELS[current.type];
+  exprEl.innerHTML = fmtProblem(current);
+  displayProblem();
+</script>
+</body>
+</html>
