@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>โจทย์ Rectilinear Motion - ข้อ 1</title>
+<style>
+
+  /* =========================================================
+     1. BASE / VARIABLES
+     ========================================================= */
+  :root {
+    --navy: #2F3C7E;
+    --navy-deep: #232D63;
+    --coral: #F96167;
+    --coral-deep: #E14A50;
+    --gold: #F9E795;
+    --ink: #FFFFFF;
+    --muted: #B9C0E0;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body { margin: 0; overflow: hidden; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+  }
+
+  /* =========================================================
+     2. BACKGROUND DECORATION
+     ========================================================= */
+  .blob { position: absolute; border-radius: 50%; pointer-events: none; }
+  .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
+  .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
+
+  /* =========================================================
+     3. HEADER
+     ========================================================= */
+  .eyebrow {
+    letter-spacing: 0.10em;
+    font-size: clamp(12px, 1.5vw, 16px);
+    font-weight: 700;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 2px;
+    z-index: 1;
+  }
+  .subtitle {
+    font-size: clamp(11px, 1.3vw, 14px);
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 10px;
+    z-index: 1;
+  }
+
+  /* =========================================================
+     4. STAGE (scrollable problem / solution area)
+     ========================================================= */
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    flex: 1;
+    width: 100%;
+    max-width: 720px;
+    padding: 0 20px;
+    z-index: 1;
+    overflow-y: auto;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .card.swap { opacity: 0; transform: scale(0.97); }
+
+  .eqn {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(16px, 2.6vw, 20px);
+    line-height: 1.5;
+  }
+
+  .qlist { margin: 12px 0 0; padding-left: 20px; }
+  .qlist li { margin-bottom: 8px; font-size: clamp(13.5px, 2vw, 15.5px); line-height: 1.5; }
+
+  .sol-title {
+    font-weight: 700;
+    color: var(--gold);
+    font-size: clamp(13px, 1.9vw, 15px);
+    margin: 14px 0 6px;
+  }
+  .sol-title:first-child { margin-top: 0; }
+
+  .sol-line {
+    font-family: "Cambria", "Georgia", serif;
+    font-size: clamp(14.5px, 2.2vw, 17px);
+    line-height: 1.6;
+    margin-bottom: 4px;
+  }
+
+  .answer-final {
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .conclusion {
+    margin-top: 6px;
+    font-size: clamp(13.5px, 2vw, 15.5px);
+    color: var(--ink);
+    background: rgba(249,231,149,0.08);
+    border-left: 3px solid var(--gold);
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+
+  /* fraction display */
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 0.08em;
+    line-height: 1.05;
+    font-size: 0.85em;
+  }
+  .frac .num, .frac .den { display: block; padding: 0 0.15em; }
+  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.03em; }
+  .frac .den { padding-top: 0.03em; }
+
+  .prompt {
+    margin-top: 4px;
+    margin-bottom: 8px;
+    font-size: clamp(12.5px, 1.8vw, 15px);
+    color: var(--muted);
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* =========================================================
+     5. MAIN CONTROLS
+     ========================================================= */
+  .controls {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 720px;
+    padding: 8px 20px clamp(12px, 3vh, 26px);
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  button {
+    border: none;
+    border-radius: 18px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-appearance: none;
+    transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.96); }
+
+  .btn-next {
+    flex: 2;
+    background: var(--coral);
+    color: var(--ink);
+    font-size: clamp(13px, 2vw, 17px);
+    padding: clamp(12px, 2.2vh, 18px) 10px;
+    white-space: nowrap;
+  }
+
+  .btn-toggle {
+    flex: 2;
+    background: var(--navy-deep);
+    color: var(--gold);
+    border: 2px solid var(--gold);
+    font-size: clamp(13px, 1.9vw, 16px);
+    padding: clamp(12px, 2.2vh, 18px) 14px;
+  }
+
+  .btn-end {
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    border: 2px solid var(--navy-deep);
+    font-size: clamp(11.5px, 1.5vw, 14px);
+    padding: clamp(12px, 2.2vh, 18px) 10px;
+  }
+  .btn-end:active { background: var(--navy-deep); }
+
+  /* =========================================================
+     6. END SCREEN
+     ========================================================= */
+  .end-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--navy-deep);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    z-index: 10;
+  }
+  .end-screen.show { display: flex; }
+  .end-screen .headline { font-size: clamp(28px, 5.5vw, 48px); font-weight: 800; margin-bottom: 12px; }
+  .end-screen .sub { color: var(--muted); font-size: clamp(15px, 2.2vw, 20px); margin-bottom: 32px; }
+
+  .btn-restart {
+    background: var(--gold);
+    color: var(--navy-deep);
+    font-size: clamp(16px, 2.2vw, 20px);
+    padding: 16px 36px;
+    border-radius: 18px;
+  }
+
+</style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="eyebrow">กลศาสตร์วิศวกรรม</div>
+  <div class="subtitle">Rectilinear Motion · โจทย์ที่ 1 — s(t) เป็นพหุนามกำลังสาม</div>
+
+  <div class="stage" id="stage">
+    <div class="card" id="problemCard"></div>
+    <div class="card" id="solutionCard" style="display:none;"></div>
+  </div>
+
+  <div class="prompt" id="promptEl">คำนวณหาคำตอบทั้ง 4 ข้อ แล้วกดดูเฉลย</div>
+
+  <div class="controls">
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
+    <button class="btn-end" id="endBtn">จบ</button>
+  </div>
+
+  <div class="end-screen" id="endScreen">
+    <div class="headline">จบแบบฝึกหัด</div>
+    <div class="sub">ฝึกฝนได้ดีมาก!</div>
+    <button class="btn-restart" id="restartBtn">เริ่มใหม่</button>
+  </div>
+
+<script>
+
+  /* =========================================================
+     0. DOM REFS
+     ========================================================= */
+  const problemCard = document.getElementById("problemCard");
+  const solutionCard = document.getElementById("solutionCard");
+  const promptEl = document.getElementById("promptEl");
+  const nextBtn = document.getElementById("nextBtn");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const endBtn = document.getElementById("endBtn");
+  const endScreen = document.getElementById("endScreen");
+  const restartBtn = document.getElementById("restartBtn");
+
+  let current = null;
+  let showingAnswer = false;
+
+  /* =========================================================
+     1. HELPERS
+     ========================================================= */
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+  function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+
+  function gcd(a, b) {
+    a = Math.abs(a); b = Math.abs(b);
+    while (b) [a, b] = [b, a % b];
+    return a || 1;
+  }
+  function simplifyFrac(n, d) {
+    const g = gcd(n, d) || 1;
+    let nn = n / g, dd = d / g;
+    if (dd < 0) { nn = -nn; dd = -dd; }
+    return { n: nn, d: dd };
+  }
+  function fracDecimal(f) { return f.n / f.d; }
+
+  // format a number to 2 decimals, trimming -0
+  function fmt2(x) {
+    let r = Math.round(x * 100) / 100;
+    if (Object.is(r, -0)) r = 0;
+    return r.toFixed(2);
+  }
+  // format a "clean" time value (quarters/halves) without forcing trailing zeros
+  function fmtT(x) {
+    let r = Math.round(x * 100) / 100;
+    return r.toString();
+  }
+
+  /* =========================================================
+     2. POLYNOMIAL DISPLAY
+     term = { n, d, label }  (label = "t<sup>3</sup>", "t<sup>2</sup>", "t", "")
+     ========================================================= */
+  function polyHTML(terms) {
+    let html = "";
+    let first = true;
+    terms.forEach(term => {
+      if (term.n === 0) return;
+      const f = simplifyFrac(term.n, term.d);
+      const neg = f.n < 0;
+      const absN = Math.abs(f.n);
+      const isUnit = (absN === f.d) && term.label !== "";
+      let magHTML;
+      if (f.d === 1) {
+        magHTML = isUnit ? "" : String(absN);
+      } else {
+        magHTML = `<span class="frac"><span class="num">${absN}</span><span class="den">${f.d}</span></span>`;
+      }
+      if (first) {
+        html += (neg ? "\u2212" : "") + magHTML + term.label;
+        first = false;
+      } else {
+        html += ` ${neg ? "\u2212" : "+"} ${magHTML}${term.label}`;
+      }
+    });
+    return html === "" ? "0" : html;
+  }
+
+  /* =========================================================
+     3. PROBLEM GENERATOR
+     ========================================================= */
+  function genA() {
+    const denom = choice([2, 4]);
+    const maxK = 4 * denom; // a <= 4
+    const k = randInt(1, maxK);
+    return simplifyFrac(k, denom); // {n,d}
+  }
+
+  function genBCD() {
+    let b, c, d, zeroCount;
+    do {
+      b = randInt(-10, 10);
+      c = randInt(-10, 10);
+      d = randInt(-10, 10);
+      zeroCount = [b, c, d].filter(v => v === 0).length;
+    } while (zeroCount > 1);
+    return { b, c, d };
+  }
+
+  function genTimes() {
+    const t1 = randInt(8, 24) / 4;   // 2.00 - 6.00, step .25
+    const t2 = randInt(8, 24) / 4;
+
+    // t3, t4 in (2, 8], step .25, t3 < t4
+    let idx1 = randInt(9, 32), idx2;
+    do { idx2 = randInt(9, 32); } while (idx2 === idx1);
+    const lo = Math.min(idx1, idx2) / 4;
+    const hi = Math.max(idx1, idx2) / 4;
+
+    const t5 = randInt(12, 24) / 2; // 6.0 - 12.0, step .5
+
+    return { t1, t2, t3: lo, t4: hi, t5 };
+  }
+
+  function generateProblem() {
+    const a = genA();               // fraction {n,d}
+    const { b, c, d } = genBCD();
+    const { t1, t2, t3, t4, t5 } = genTimes();
+
+    const aVal = fracDecimal(a);
+
+    // s(t) terms
+    const sTerms = [
+      { n: a.n, d: a.d, label: "t<sup>3</sup>" },
+      { n: b, d: 1, label: "t<sup>2</sup>" },
+      { n: c, d: 1, label: "t" },
+      { n: d, d: 1, label: "" }
+    ];
+
+    // v(t) = 3a t^2 + 2b t + c
+    const vA = simplifyFrac(3 * a.n, a.d);
+    const vTerms = [
+      { n: vA.n, d: vA.d, label: "t<sup>2</sup>" },
+      { n: 2 * b, d: 1, label: "t" },
+      { n: c, d: 1, label: "" }
+    ];
+
+    // acc(t) = 6a t + 2b
+    const accA = simplifyFrac(6 * a.n, a.d);
+    const accTerms = [
+      { n: accA.n, d: accA.d, label: "t" },
+      { n: 2 * b, d: 1, label: "" }
+    ];
+
+    function evalS(t) { return aVal * t ** 3 + b * t ** 2 + c * t + d; }
+    function evalV(t) { return fracDecimal(vA) * t ** 2 + 2 * b * t + c; }
+    function evalAcc(t) { return fracDecimal(accA) * t + 2 * b; }
+
+    // quadratic v(t) = 0 -> A t^2 + B t + C = 0
+    const A = fracDecimal(vA);
+    const B = 2 * b;
+    const C = c;
+    const D = B * B - 4 * A * C;
+
+    let roots = [];
+    const EPS = 1e-9;
+    if (D > EPS) {
+      const sqrtD = Math.sqrt(D);
+      roots = [(-B - sqrtD) / (2 * A), (-B + sqrtD) / (2 * A)].sort((x, y) => x - y);
+    } else if (Math.abs(D) <= EPS) {
+      roots = [-B / (2 * A)];
+    }
+    const rootsInRange = roots.filter(r => r >= -EPS && r <= t5 + EPS).map(r => Math.max(0, r));
+
+    return {
+      a, b, c, d, t1, t2, t3, t4, t5,
+      sTerms, vTerms, accTerms,
+      evalS, evalV, evalAcc,
+      A, B, C, D, roots, rootsInRange
+    };
+  }
+
+  /* =========================================================
+     4. RENDER
+     ========================================================= */
+  function renderProblem(p) {
+    problemCard.innerHTML = `
+      <div class="eqn">s(t) = ${polyHTML(p.sTerms)} &nbsp; (m), &nbsp; t (s)</div>
+      <ol class="qlist">
+        <li>ที่เวลา t = ${fmtT(p.t1)} s อนุภาคมีความเร็วเท่าใด</li>
+        <li>ที่เวลา t = ${fmtT(p.t2)} s อนุภาคมีความเร่งเท่าใด</li>
+        <li>การกระจัด (displacement) จากเวลา t = ${fmtT(p.t3)} s ถึง t = ${fmtT(p.t4)} s มีค่าเท่าใด</li>
+        <li>การเคลื่อนที่ในช่วง 0 ถึง ${fmtT(p.t5)} s มีการกลับทิศหรือไม่ ถ้ามี มีกี่ครั้งและที่เวลาใดบ้าง</li>
+      </ol>
+    `;
+  }
+
+  function renderSolution(p) {
+    const v1 = p.evalV(p.t1);
+    const a2 = p.evalAcc(p.t2);
+    const s3 = p.evalS(p.t3);
+    const s4 = p.evalS(p.t4);
+    const disp = s4 - s3;
+
+    let q4Lines = "";
+    q4Lines += `<div class="sol-line">v(t) = 0 &nbsp;\u21d2&nbsp; ${polyHTML(p.vTerms)} = 0</div>`;
+    q4Lines += `<div class="sol-line">A = ${fmt2(p.A)}, &nbsp; B = ${fmt2(p.B)}, &nbsp; C = ${fmt2(p.C)}</div>`;
+    q4Lines += `<div class="sol-line">D = B<sup>2</sup> \u2212 4AC = ${fmt2(p.D)}</div>`;
+
+    if (p.D < -1e-9) {
+      q4Lines += `<div class="conclusion">D &lt; 0 \u21d2 สมการไม่มีคำตอบจริง \u21d2 <span class="answer-final">ความเร็วไม่เปลี่ยนเครื่องหมายในช่วงนี้ ⇒ ไม่มีการกลับทิศ</span></div>`;
+    } else {
+      const rootsStr = p.roots.map(r => fmt2(r) + " s").join(", ");
+      q4Lines += `<div class="sol-line">t = ${rootsStr}</div>`;
+      if (p.rootsInRange.length === 0) {
+        q4Lines += `<div class="conclusion">ไม่มีรากใดอยู่ในช่วง [0, ${fmtT(p.t5)}] \u21d2 <span class="answer-final">ไม่มีการกลับทิศในช่วงที่กำหนด</span></div>`;
+      } else {
+        const inRangeStr = p.rootsInRange.map(r => fmt2(r) + " s").join(", ");
+        q4Lines += `<div class="conclusion"><span class="answer-final">มีการกลับทิศ ${p.rootsInRange.length} ครั้ง</span> ที่เวลา t = ${inRangeStr}</div>`;
+      }
+    }
+
+    solutionCard.innerHTML = `
+      <div class="sol-title">อนุพันธ์อันดับ 1 (ความเร็ว)</div>
+      <div class="sol-line">v(t) = ds/dt = 3a t<sup>2</sup> + 2b t + c = ${polyHTML(p.vTerms)} &nbsp; (m/s)</div>
+
+      <div class="sol-title">อนุพันธ์อันดับ 2 (ความเร่ง)</div>
+      <div class="sol-line">a(t) = dv/dt = 6a t + 2b = ${polyHTML(p.accTerms)} &nbsp; (m/s<sup>2</sup>)</div>
+
+      <div class="sol-title">ข้อ 1: ความเร็วที่ t = ${fmtT(p.t1)} s</div>
+      <div class="sol-line">v(${fmtT(p.t1)}) = ${polyHTML(p.vTerms)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t1)}</div>
+      <div class="sol-line">v(${fmtT(p.t1)}) = <span class="answer-final">${fmt2(v1)} m/s</span></div>
+
+      <div class="sol-title">ข้อ 2: ความเร่งที่ t = ${fmtT(p.t2)} s</div>
+      <div class="sol-line">a(${fmtT(p.t2)}) = ${polyHTML(p.accTerms)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t2)}</div>
+      <div class="sol-line">a(${fmtT(p.t2)}) = <span class="answer-final">${fmt2(a2)} m/s<sup>2</sup></span></div>
+
+      <div class="sol-title">ข้อ 3: การกระจัดจาก t = ${fmtT(p.t3)} s ถึง t = ${fmtT(p.t4)} s</div>
+      <div class="sol-line">s(${fmtT(p.t4)}) = ${fmt2(s4)} m</div>
+      <div class="sol-line">s(${fmtT(p.t3)}) = ${fmt2(s3)} m</div>
+      <div class="sol-line">\u0394s = s(${fmtT(p.t4)}) \u2212 s(${fmtT(p.t3)}) = ${fmt2(s4)} \u2212 ${fmt2(s3)} = <span class="answer-final">${fmt2(disp)} m</span></div>
+
+      <div class="sol-title">ข้อ 4: การกลับทิศในช่วง 0 ถึง ${fmtT(p.t5)} s</div>
+      ${q4Lines}
+    `;
+  }
+
+  /* =========================================================
+     5. DISPLAY STATE
+     ========================================================= */
+  function showProblem() {
+    problemCard.style.display = "";
+    solutionCard.style.display = "none";
+    promptEl.textContent = "คำนวณหาคำตอบทั้ง 4 ข้อ แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
+  }
+  function showSolution() {
+    problemCard.style.display = "none";
+    solutionCard.style.display = "";
+    promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
+  }
+
+  function newProblem() {
+    current = generateProblem();
+    renderProblem(current);
+    renderSolution(current);
+    showingAnswer = false;
+    showProblem();
+  }
+
+  function showNext() {
+    problemCard.classList.add("swap");
+    solutionCard.classList.add("swap");
+    setTimeout(() => {
+      newProblem();
+      problemCard.classList.remove("swap");
+      solutionCard.classList.remove("swap");
+    }, 150);
+  }
+
+  function toggleAnswer() {
+    const el = showingAnswer ? solutionCard : problemCard;
+    el.classList.add("swap");
+    setTimeout(() => {
+      showingAnswer = !showingAnswer;
+      if (showingAnswer) showSolution(); else showProblem();
+      (showingAnswer ? solutionCard : problemCard).classList.remove("swap");
+    }, 150);
+  }
+
+  /* =========================================================
+     6. EVENTS
+     ========================================================= */
+  nextBtn.addEventListener("click", showNext);
+  toggleBtn.addEventListener("click", toggleAnswer);
+  endBtn.addEventListener("click", () => endScreen.classList.add("show"));
+  restartBtn.addEventListener("click", () => {
+    endScreen.classList.remove("show");
+    showNext();
+  });
+
+  /* =========================================================
+     7. INITIAL LOAD
+     ========================================================= */
+  newProblem();
+
+</script>
+
+</body>
+</html>
