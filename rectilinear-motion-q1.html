@@ -12,6 +12,9 @@
   .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
   .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
   .katex .msupsub { margin-left: 0.08em; }
+
+  .math-var { font-family: "Times New Roman", Times, serif; font-style: italic; }
+  .math-unit { font-family: "Times New Roman", Times, serif; font-style: normal; }
 </style>
 <style>
 
@@ -247,7 +250,7 @@
   <div class="blob blob-2"></div>
 
   <div class="eyebrow">กลศาสตร์วิศวกรรม</div>
-  <div class="subtitle">Rectilinear Motion · โจทย์ที่ 1 — s(t) เป็นพหุนามกำลังสาม</div>
+  <div class="subtitle">Rectilinear Motion · โจทย์ที่ 1 — <span class="math-var">s(t)</span> เป็นพหุนามกำลังสาม</div>
 
   <div class="stage" id="stage">
     <div class="card" id="problemCard"></div>
@@ -385,7 +388,7 @@
 
     function toX(t) { return padL + (t - tMin) / (tMax - tMin) * (W - padL - padR); }
 
-    function buildPanel(fn, label) {
+    function buildPanel(fn, variableLabel, unitText) {
       const N = 60;
       const pts = [];
       for (let i = 0; i <= N; i++) {
@@ -415,7 +418,13 @@
         svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H - padB}" stroke="${p.coral || '#F96167'}" stroke-width="1.3" stroke-dasharray="2 3"/>`;
       });
       svg += `<path d="${d}" fill="none" stroke="white" stroke-width="2"/>`;
-      svg += `<text x="${padL}" y="12" font-size="11" fill="${GOLD}" font-weight="700" font-family="Cambria, Georgia, serif">${label}</text>`;
+      svg += `<text x="${padL}" y="12" font-size="11" fill="${GOLD}" font-weight="700" font-family="Times New Roman, Times, serif">`;
+      const fnName = variableLabel.charAt(0);
+      svg += `<tspan font-style="italic">${fnName}</tspan>`;
+      svg += `<tspan font-style="normal">(</tspan>`;
+      svg += `<tspan font-style="italic">t</tspan>`;
+      svg += `<tspan font-style="normal">)  [${unitText}]</tspan>`;
+      svg += `</text>`;
       svg += `<text x="${padL}" y="${H - 5}" font-size="9" fill="${MUTED}">0</text>`;
       svg += `<text x="${W - padR}" y="${H - 5}" font-size="9" fill="${MUTED}" text-anchor="end">${fmtT(tMax)}</text>`;
       svg += `</svg>`;
@@ -423,13 +432,21 @@
     }
 
     let html = `<div style="background:rgba(255,255,255,0.04); border-radius:10px; padding:10px 10px 4px; margin-bottom:14px;">`;
-    html += buildPanel(p.evalS, "s(t)  [m]");
-    html += buildPanel(p.evalV, "v(t)  [m/s]");
-    html += buildPanel(p.evalAcc, "a(t)  [m/s\u00b2]");
-    html += `<div style="font-size:11px; color:${MUTED}; text-align:center; margin-top:2px;">`;
-    html += `<span style="color:${GOLD};">- - -</span> v(t)=0`;
-    if (aMarkers.length) html += `&nbsp;&nbsp; <span style="color:#F96167;">- - -</span> a(t)=0`;
-    html += `</div></div>`;
+    html += buildPanel(p.evalS, "s(t)", "m");
+    html += buildPanel(p.evalV, "v(t)", "m/s");
+    html += buildPanel(p.evalAcc, "a(t)", "m/s²");
+    if (vMarkers.length || aMarkers.length) {
+      html += `<div style="font-size:11px; color:${MUTED}; text-align:center; margin-top:2px; font-family:'Times New Roman', Times, serif; font-style:normal;">`;
+      if (vMarkers.length) {
+        html += `<span style="color:${GOLD};">- - -</span> <span class="math-var">v</span>(<span class="math-var">t</span>)=0`;
+      }
+      if (aMarkers.length) {
+        if (vMarkers.length) html += `&nbsp;&nbsp;`;
+        html += `<span style="color:#F96167;">- - -</span> <span class="math-var">a</span>(<span class="math-var">t</span>)=0`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
     return html;
   }
 
@@ -532,12 +549,12 @@
      ========================================================= */
   function renderProblem(p) {
     problemCard.innerHTML = `
-      <div class="eqn">${KT(`s(t) = ${polyLatex(p.sTerms)}`)} &nbsp; (m), &nbsp; ${KT("t")} (s)</div>
+      <div class="eqn">${KT(`s(t) = ${polyLatex(p.sTerms)}`)} &nbsp; (${KT(`\\mathrm{m}`)}), &nbsp; ${KT("t")} (${KT(`\\mathrm{s}`)})</div>
       <ol class="qlist">
-        <li>ที่เวลา t = ${fmtT(p.t1)} s อนุภาคมีความเร็วเท่าใด</li>
-        <li>ที่เวลา t = ${fmtT(p.t2)} s อนุภาคมีความเร่งเท่าใด</li>
-        <li>การกระจัด (displacement) จากเวลา t = ${fmtT(p.t3)} s ถึง t = ${fmtT(p.t4)} s มีค่าเท่าใด</li>
-        <li>การเคลื่อนที่ในช่วง 0 ถึง ${fmtT(p.t5)} s มีการกลับทิศหรือไม่ ถ้ามี มีกี่ครั้งและที่เวลาใดบ้าง</li>
+        <li>ที่เวลา <span class="math-var">t</span> = ${fmtT(p.t1)} <span class="math-unit">s</span> อนุภาคมีความเร็วเท่าใด</li>
+        <li>ที่เวลา <span class="math-var">t</span> = ${fmtT(p.t2)} <span class="math-unit">s</span> อนุภาคมีความเร่งเท่าใด</li>
+        <li>การกระจัด (displacement) จากเวลา <span class="math-var">t</span> = ${fmtT(p.t3)} <span class="math-unit">s</span> ถึง <span class="math-var">t</span> = ${fmtT(p.t4)} <span class="math-unit">s</span> มีค่าเท่าใด</li>
+        <li>การเคลื่อนที่ในช่วง 0 ถึง ${fmtT(p.t5)} <span class="math-unit">s</span> มีการกลับทิศหรือไม่ ถ้ามี มีกี่ครั้งและที่เวลาใดบ้าง</li>
       </ol>
     `;
   }
@@ -551,46 +568,46 @@
 
     let q4Lines = "";
     q4Lines += `<div class="sol-line">${KT(`v(t) = 0 \\;\\Rightarrow\\; ${polyLatex(p.vTerms)} = 0`)}</div>`;
-    q4Lines += `<div class="sol-line">A = ${fmt2(p.A)}, &nbsp; B = ${fmt2(p.B)}, &nbsp; C = ${fmt2(p.C)}</div>`;
+    q4Lines += `<div class="sol-line">${KT(`A = ${fmt2(p.A)},\\quad B = ${fmt2(p.B)},\\quad C = ${fmt2(p.C)}`)}</div>`;
     q4Lines += `<div class="sol-line">${KT(`D = B^2 - 4AC = ${fmt2(p.D)}`)}</div>`;
 
     if (p.D < -1e-9) {
-      q4Lines += `<div class="conclusion">D &lt; 0 \u21d2 สมการไม่มีคำตอบจริง \u21d2 <span class="answer-final">ความเร็วไม่เปลี่ยนเครื่องหมายในช่วงนี้ ⇒ ไม่มีการกลับทิศ</span></div>`;
+      q4Lines += `<div class="conclusion"><span class="math-var">D</span> &lt; 0 \u21d2 สมการไม่มีคำตอบจริง \u21d2 <span class="answer-final">ความเร็วไม่เปลี่ยนเครื่องหมายในช่วงนี้ ⇒ ไม่มีการกลับทิศ</span></div>`;
     } else {
-      const rootsStr = p.roots.map(r => fmt2(r) + " s").join(", ");
-      q4Lines += `<div class="sol-line">t = ${rootsStr}</div>`;
+      const rootsStr = p.roots.map(r => `${fmt2(r)}\\,\\mathrm{s}`).join(",\\; ");
+      q4Lines += `<div class="sol-line">${KT(`t = ${rootsStr}`)}</div>`;
       if (p.rootsInRange.length === 0) {
         q4Lines += `<div class="conclusion">ไม่มีรากใดอยู่ในช่วง [0, ${fmtT(p.t5)}] \u21d2 <span class="answer-final">ไม่มีการกลับทิศในช่วงที่กำหนด</span></div>`;
       } else {
-        const inRangeStr = p.rootsInRange.map(r => fmt2(r) + " s").join(", ");
-        q4Lines += `<div class="conclusion"><span class="answer-final">มีการกลับทิศ ${p.rootsInRange.length} ครั้ง</span> ที่เวลา t = ${inRangeStr}</div>`;
+        const inRangeStr = p.rootsInRange.map(r => `${fmt2(r)}\\,\\mathrm{s}`).join(",\\; ");
+        q4Lines += `<div class="conclusion"><span class="answer-final">มีการกลับทิศ ${p.rootsInRange.length} ครั้ง</span> ที่เวลา ${KT(`t = ${inRangeStr}`)}</div>`;
       }
     }
 
     solutionCard.innerHTML = `
       <div class="sol-title">อนุพันธ์อันดับ 1 (ความเร็ว)</div>
-      <div class="sol-line">${KT(`v(t) = \\dfrac{ds}{dt} = 3at^2+2bt+c = ${polyLatex(p.vTerms)}`)} &nbsp; (m/s)</div>
+      <div class="sol-line">${KT(`v(t) = \\dfrac{ds}{dt} = 3at^2+2bt+c = ${polyLatex(p.vTerms)}`)} &nbsp; (${KT(`\\frac{\\mathrm{m}}{\\mathrm{s}}`)})</div>
 
       <div class="sol-title">อนุพันธ์อันดับ 2 (ความเร่ง)</div>
-      <div class="sol-line">${KT(`a(t) = \\dfrac{dv}{dt} = 6at+2b = ${polyLatex(p.accTerms)}`)} &nbsp; (m/s\u00b2)</div>
+      <div class="sol-line">${KT(`a(t) = \\dfrac{dv}{dt} = 6at+2b = ${polyLatex(p.accTerms)}`)} &nbsp; (${KT(`\\frac{\\mathrm{m}}{\\mathrm{s}^2}`)})</div>
 
-      <div class="sol-title">กราฟ s(t), v(t), a(t) (แกนเวลาเดียวกัน)</div>
+      <div class="sol-title">กราฟ <span class="math-var">s</span>(<span class="math-var">t</span>), <span class="math-var">v</span>(<span class="math-var">t</span>), <span class="math-var">a</span>(<span class="math-var">t</span>) (แกนเวลาเดียวกัน)</div>
       ${buildTripleGraph(p)}
 
-      <div class="sol-title">ข้อ 1: ความเร็วที่ t = ${fmtT(p.t1)} s</div>
-      <div class="sol-line">${KT(`v(${fmtT(p.t1)}) = ${polyLatex(p.vTerms)}`)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t1)}</div>
-      <div class="sol-line">v(${fmtT(p.t1)}) = <span class="answer-final">${fmt2(v1)} m/s</span></div>
+      <div class="sol-title">ข้อ 1: ความเร็วที่ ${KT(`t = ${fmtT(p.t1)}\\,\\mathrm{s}`)}</div>
+      <div class="sol-line">${KT(`v(${fmtT(p.t1)}) = ${polyLatex(p.vTerms)}`)} &nbsp;\u2192&nbsp; แทนค่า ${KT(`t = ${fmtT(p.t1)}`)}</div>
+      <div class="sol-line"><span class="answer-final">${KT(`v(${fmtT(p.t1)}) = ${fmt2(v1)}\\,\\frac{\\mathrm{m}}{\\mathrm{s}}`)}</span></div>
 
-      <div class="sol-title">ข้อ 2: ความเร่งที่ t = ${fmtT(p.t2)} s</div>
-      <div class="sol-line">${KT(`a(${fmtT(p.t2)}) = ${polyLatex(p.accTerms)}`)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t2)}</div>
-      <div class="sol-line">a(${fmtT(p.t2)}) = <span class="answer-final">${fmt2(a2)} m/s\u00b2</span></div>
+      <div class="sol-title">ข้อ 2: ความเร่งที่ ${KT(`t = ${fmtT(p.t2)}\\,\\mathrm{s}`)}</div>
+      <div class="sol-line">${KT(`a(${fmtT(p.t2)}) = ${polyLatex(p.accTerms)}`)} &nbsp;\u2192&nbsp; แทนค่า ${KT(`t = ${fmtT(p.t2)}`)}</div>
+      <div class="sol-line"><span class="answer-final">${KT(`a(${fmtT(p.t2)}) = ${fmt2(a2)}\\,\\frac{\\mathrm{m}}{\\mathrm{s}^2}`)}</span></div>
 
-      <div class="sol-title">ข้อ 3: การกระจัดจาก t = ${fmtT(p.t3)} s ถึง t = ${fmtT(p.t4)} s</div>
-      <div class="sol-line">s(${fmtT(p.t4)}) = ${fmt2(s4)} m</div>
-      <div class="sol-line">s(${fmtT(p.t3)}) = ${fmt2(s3)} m</div>
-      <div class="sol-line">\u0394s = s(${fmtT(p.t4)}) \u2212 s(${fmtT(p.t3)}) = ${fmt2(s4)} \u2212 ${fmt2Paren(s3)} = <span class="answer-final">${fmt2(disp)} m</span></div>
+      <div class="sol-title">ข้อ 3: การกระจัดจาก ${KT(`t = ${fmtT(p.t3)}\\,\\mathrm{s}`)} ถึง ${KT(`t = ${fmtT(p.t4)}\\,\\mathrm{s}`)}</div>
+      <div class="sol-line">${KT(`s(${fmtT(p.t4)}) = ${fmt2(s4)}\\,\\mathrm{m}`)}</div>
+      <div class="sol-line">${KT(`s(${fmtT(p.t3)}) = ${fmt2(s3)}\\,\\mathrm{m}`)}</div>
+      <div class="sol-line">${KT(`\\Delta s = s(${fmtT(p.t4)}) - s(${fmtT(p.t3)}) = ${fmt2(s4)} - ${fmt2Paren(s3)} =`)} <span class="answer-final">${KT(`${fmt2(disp)}\\,\\mathrm{m}`)}</span></div>
 
-      <div class="sol-title">ข้อ 4: การกลับทิศในช่วง 0 ถึง ${fmtT(p.t5)} s</div>
+      <div class="sol-title">ข้อ 4: การกลับทิศในช่วง 0 ถึง ${fmtT(p.t5)} <span class="math-unit">s</span></div>
       ${q4Lines}
     `;
   }
