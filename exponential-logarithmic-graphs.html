@@ -299,6 +299,11 @@
     else el.textContent = latex;
   }
 
+  function KT(latex, displayMode = false) {
+    if (window.katex) return katex.renderToString(latex, { throwOnError: false, displayMode });
+    return latex;
+  }
+
   /* =========================================================
      4. FORMATTING
      ========================================================= */
@@ -438,7 +443,7 @@
     // text refers to, so viewers can see at a glance what each letter's actual value is
     // (per explicit request — previously only the (h,k) reference lines were labelled)
     const eqLabel = fmtProblemPlain(prob);
-    svg += `<text x="${(W / 2).toFixed(1)}" y="16" font-size="12" fill="${GOLD}" font-weight="700" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="italic">${eqLabel}</text>`;
+    svg += `<text x="${(W / 2).toFixed(1)}" y="16" font-size="12" fill="${GOLD}" font-weight="700" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${eqLabel}</text>`;
     svg += "</svg>";
     return svg;
   }
@@ -449,26 +454,51 @@
   function buildAnswerCard(prob) {
     if (prob.type === "exp") {
       const baseVal = prob.base.p / prob.base.q;
+      const baseTex = prob.base.q === 1 ? `${prob.base.p}` : `\\left(\\frac{${prob.base.p}}{${prob.base.q}}\\right)`;
+      const probTex = latexProblem(prob);
+      const shiftedTex = `y=${latexCoeff(prob.c)}${baseTex}^{x}`;
+      const asymTex = `y=${latexSigned(prob.k)}`;
+      const limitDir = baseVal > 1 ? "-\\infty" : "+\\infty";
       return `
-        <div class="answer-row"><b>1. รูปมาตรฐาน:</b> ${fmtProblem(prob)}  &nbsp;=&nbsp;  y = c\u00b7a<sup>(x\u2212h)</sup> + k &nbsp;<span style="color:var(--muted);">(c=${fmtSigned(prob.c)}, a=${fmtBaseInline(prob.base)}, h=${fmtSigned(prob.h)}, k=${fmtSigned(prob.k)})</span></div>
-        <div class="answer-row"><b>2. ย้ายแกนไปที่ (h,k) = (${fmtSigned(prob.h)}, ${fmtSigned(prob.k)}):</b> เมื่อมองผ่านแกนใหม่ (เส้นประ) กราฟจะเป็น y = ${fmtCoeff(prob.c)}${fmtBaseForExponent(prob.base)}<sup>x</sup> ธรรมดา (ไม่ต้องคำนวณอะไรเพิ่ม)</div>
-        <div class="answer-row"><b>3. เส้นกำกับแนวนอน:</b> y = ${fmtSigned(prob.k)} (เพราะ ${fmtBaseForExponent(prob.base)}<sup>x</sup> \u2192 0 เมื่อ x\u2192${baseVal > 1 ? "\u2212\u221e" : "+\u221e"})</div>
-        <div class="answer-row"><b>4. ทิศทาง:</b> ${baseVal > 1 ? "เพิ่มขึ้น" : "ลดลง"} (ฐาน ${baseVal > 1 ? ">1" : "อยู่ระหว่าง 0 ถึง 1"}) ${prob.c < 0 ? "\u0e41\u0e25\u0e30\u0e2a\u0e30\u0e17\u0e49\u0e2d\u0e19\u0e02\u0e36\u0e49\u0e19-\u0e25\u0e07 (\u0e40\u0e1e\u0e23\u0e32\u0e30 c<0)" : ""}</div>
+        <div class="answer-row"><b>1. รูปมาตรฐาน:</b> ${KT(probTex)}
+          &nbsp;=&nbsp; ${KT(`y=c\\,a^{x-h}+k`)}
+          &nbsp;<span style="color:var(--muted);">${KT(`(c=${latexSigned(prob.c)},\\ a=${baseTex},\\ h=${latexSigned(prob.h)},\\ k=${latexSigned(prob.k)})`)}</span></div>
+        <div class="answer-row"><b>2. ย้ายแกนไปที่ ${KT(`(h,k)=(${latexSigned(prob.h)},${latexSigned(prob.k)})`)}:</b>
+          เมื่อมองผ่านแกนใหม่ (เส้นประ) กราฟจะเป็น ${KT(shiftedTex)} ธรรมดา (ไม่ต้องคำนวณอะไรเพิ่ม)</div>
+        <div class="answer-row"><b>3. เส้นกำกับแนวนอน:</b> ${KT(asymTex)}
+          (เพราะ ${KT(`${baseTex}^{x}\\to0`)} เมื่อ ${KT(`x\\to${limitDir}`)})</div>
+        <div class="answer-row"><b>4. ทิศทาง:</b> ${baseVal > 1 ? "เพิ่มขึ้น" : "ลดลง"}
+          (ฐาน ${baseVal > 1 ? KT(`>1`) : `อยู่ระหว่าง ${KT(`0`)} ถึง ${KT(`1`)}`})
+          ${prob.c < 0 ? `และสะท้อนขึ้น-ลง (เพราะ ${KT(`c<0`)})` : ""}</div>
       `;
     } else {
-      const hLabel = fracHTML(prob.h);
+      const hTex = latexFrac(prob.h);
+      const bTex = latexFrac(prob.B);
       const bIsPos = !prob.isMirrored;
+      const innerShift = prob.isMirrored ? "h-x" : "x-h";
+      const stdShiftTex = `y=${latexCoeff(prob.A)}\\log_{${prob.base}}\\!\\left(${innerShift}\\right)+k`;
+      const bForDivision = prob.B.p === prob.B.q ? "1" : prob.B.p === -prob.B.q ? "-1" : bTex;
+      const draftTex = `y=${latexCoeff(prob.A)}\\log_{${prob.base}}\\!\\left(x-(${hTex})\\right)`;
+      const baseGraphTex = `y=${latexCoeff(prob.A)}\\log_{${prob.base}}\\!\\left(x\\right)`;
       return `
-        <div class="answer-row"><b>1. รูปมาตรฐาน:</b> y = ${fmtProblemPlainInner(prob)}  =  A\u00b7log<sub>${prob.base}</sub>(Bx+C) + D &nbsp;<span style="color:var(--muted);">(A=${fmtSigned(prob.A)}, B=${prob.B.q === 1 ? fmtSigned(prob.B.p) : fracHTML(prob.B)}, C=${fmtSigned(prob.C)}, D=${fmtSigned(prob.D)}, \u0e10\u0e32\u0e19=${prob.base}, B\u0e40\u0e1b\u0e47\u0e19\u0e04\u0e48\u0e32${bIsPos ? "\u0e1a\u0e27\u0e01" : "\u0e25\u0e1a"})</span></div>
-        <div class="answer-row"><b>\u0e23\u0e39\u0e1b\u0e41\u0e1a\u0e1a\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e22\u0e49\u0e32\u0e22\u0e41\u0e01\u0e19:</b> y = ${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(${prob.isMirrored ? "h \u2212 x" : "x \u2212 h"}) + k &nbsp;<span style="color:var(--muted);">(\u0e43\u0e0a\u0e49\u0e04\u0e38\u0e13\u0e2a\u0e21\u0e1a\u0e31\u0e15\u0e34 log(MN)=log M+log N \u0e08\u0e31\u0e14\u0e23\u0e39\u0e1b\u0e01\u0e48\u0e2d\u0e19)</span></div>
-        <div class="answer-row"><b>2. หา h:</b> h = \u2212C/B = \u2212(${fmtSigned(prob.C)})/(${prob.B.p === prob.B.q ? 1 : prob.B.p === -prob.B.q ? -1 : fracHTML(prob.B)}) = ${hLabel}</div>
-        <div class="answer-row"><b>3. หา k (จุดสำคัญ):</b> k = D + A\u00d7log<sub>${prob.base}</sub>|B| = ${fmtSigned(prob.D)} + ${fmtSigned(prob.A)}\u00d7${fmtSigned(prob.n)} = ${fmtSigned(prob.k)}</div>
-        <div class="answer-row"><b>4. \u0e27\u0e34\u0e18\u0e35\u0e23\u0e48\u0e32\u0e07\u0e01\u0e23\u0e32\u0e1f:</b> ${bIsPos
-          ? `B \u0e40\u0e1b\u0e47\u0e19\u0e1a\u0e27\u0e01 \u2192 \u0e27\u0e32\u0e14\u0e01\u0e23\u0e32\u0e1f\u0e1b\u0e01\u0e15\u0e34 y=A\u00b7log<sub>${prob.base}</sub>(x\u2212h)+k \u0e44\u0e14\u0e49\u0e40\u0e25\u0e22`
-          : `B \u0e40\u0e1b\u0e47\u0e19\u0e25\u0e1a \u2192 \u0e15\u0e49\u0e2d\u0e07\u0e0a\u0e48\u0e27\u0e22\u0e23\u0e48\u0e32\u0e07\u0e08\u0e32\u0e01\u0e01\u0e23\u0e32\u0e1f\u0e1d\u0e31\u0e48\u0e07\u0e1a\u0e27\u0e01\u0e17\u0e35\u0e48\u0e04\u0e38\u0e49\u0e19\u0e40\u0e04\u0e22\u0e01\u0e48\u0e2d\u0e19: \u0e23\u0e48\u0e32\u0e07 y=${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(x\u2212(${hLabel})) \u0e01\u0e48\u0e2d\u0e19 (\u0e40\u0e2b\u0e21\u0e37\u0e2d\u0e19\u0e44\u0e21\u0e48\u0e21\u0e35\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e2b\u0e21\u0e32\u0e22\u0e25\u0e1a) \u0e41\u0e25\u0e49\u0e27<b>\u0e2a\u0e30\u0e17\u0e49\u0e2d\u0e19\u0e02\u0e49\u0e32\u0e21\u0e40\u0e2a\u0e49\u0e19\u0e15\u0e23\u0e07 x=${hLabel}</b> (\u0e40\u0e2a\u0e49\u0e19\u0e01\u0e33\u0e01\u0e31\u0e1a\u0e40\u0e14\u0e34\u0e21\u0e19\u0e31\u0e48\u0e19\u0e40\u0e2d\u0e07 \u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e41\u0e01\u0e19 y \u0e40\u0e27\u0e49\u0e19\u0e41\u0e15\u0e48 h=0 \u0e1e\u0e2d\u0e14\u0e35)`}</div>
-        <div class="answer-row"><b>5. \u0e2a\u0e21\u0e01\u0e32\u0e23\u0e17\u0e35\u0e48\u0e08\u0e31\u0e14\u0e23\u0e39\u0e1b\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e22\u0e49\u0e32\u0e22\u0e41\u0e01\u0e19:</b> ${fmtStandardForm(prob)}</div>
-        <div class="answer-row">\u0e22\u0e49\u0e32\u0e22\u0e01\u0e23\u0e32\u0e1f y = ${fmtCoeff(prob.A)}log<sub>${prob.base}</sub>(x) \u0e44\u0e1b\u0e17\u0e35\u0e48\u0e08\u0e38\u0e14 (h,k) = (${hLabel}, ${fmtSigned(prob.k)}) \u0e42\u0e14\u0e22\u0e2d\u0e49\u0e32\u0e07\u0e2d\u0e34\u0e07\u0e01\u0e31\u0e1a (0,0)${prob.isMirrored ? ` \u0e41\u0e25\u0e49\u0e27<b>\u0e2a\u0e30\u0e17\u0e49\u0e2d\u0e19\u0e20\u0e32\u0e1e\u0e14\u0e49\u0e27\u0e22\u0e40\u0e2a\u0e49\u0e19\u0e15\u0e23\u0e07 x=${hLabel}</b> (\u0e04\u0e48\u0e32 h \u0e08\u0e32\u0e01\u0e02\u0e49\u0e2d 2)` : ""}</div>
-        <div class="answer-row"><b>6. เส้นกำกับแนวตั้ง:</b> x = ${hLabel}, โดเมน: ${prob.isMirrored ? `x &lt; ${hLabel}` : `x &gt; ${hLabel}`}</div>
+        <div class="answer-row"><b>1. รูปมาตรฐาน:</b> ${KT(latexProblem(prob))}
+          &nbsp;=&nbsp; ${KT(`A\\log_{${prob.base}}\\!\\left(Bx+C\\right)+D`)}
+          &nbsp;<span style="color:var(--muted);">${KT(`(A=${latexSigned(prob.A)},\\ B=${bTex},\\ C=${latexSigned(prob.C)},\\ D=${latexSigned(prob.D)})`)}
+          , ฐาน=${KT(`${prob.base}`)}, ${KT(`B`)} เป็นค่า${bIsPos ? "บวก" : "ลบ"}</span></div>
+        <div class="answer-row"><b>รูปแบบสำหรับย้ายแกน:</b> ${KT(stdShiftTex)}
+          &nbsp;<span style="color:var(--muted);">(ใช้คุณสมบัติ ${KT(`\\log(MN)=\\log M+\\log N`)} จัดรูปก่อน)</span></div>
+        <div class="answer-row"><b>2. หา ${KT(`h`)}:</b>
+          ${KT(`h=-\\frac{C}{B}=-\\frac{(${latexSigned(prob.C)})}{(${bForDivision})}=${hTex}`)}</div>
+        <div class="answer-row"><b>3. หา ${KT(`k`)} (จุดสำคัญ):</b>
+          ${KT(`k=D+A\\log_{${prob.base}}|B|=${latexSigned(prob.D)}+${latexSigned(prob.A)}\\times${latexSigned(prob.n)}=${latexSigned(prob.k)}`)}</div>
+        <div class="answer-row"><b>4. วิธีร่างกราฟ:</b> ${bIsPos
+          ? `${KT(`B>0`)} → วาดกราฟปกติ ${KT(`y=A\\log_{${prob.base}}(x-h)+k`)} ได้เลย`
+          : `${KT(`B<0`)} → ต้องช่วยร่างจากกราฟฝั่งบวกที่คุ้นเคยก่อน: ร่าง ${KT(draftTex)} ก่อน (เหมือนไม่มีเครื่องหมายลบ) แล้ว<b>สะท้อนข้ามเส้นตรง ${KT(`x=${hTex}`)}</b> (เส้นกำกับเดิมนั่นเอง ไม่ใช่แกน ${KT(`y`)} เว้นแต่ ${KT(`h=0`)} พอดี)`}</div>
+        <div class="answer-row"><b>5. สมการที่จัดรูปสำหรับย้ายแกน:</b> ${KT(latexStandard(prob))}</div>
+        <div class="answer-row">ย้ายกราฟ ${KT(baseGraphTex)} ไปที่จุด ${KT(`(h,k)=(${hTex},${latexSigned(prob.k)})`)}
+          โดยอ้างอิงกับ ${KT(`(0,0)`)}${prob.isMirrored ? ` แล้ว<b>สะท้อนภาพด้วยเส้นตรง ${KT(`x=${hTex}`)}</b> (ค่า ${KT(`h`)} จากข้อ 2)` : ""}</div>
+        <div class="answer-row"><b>6. เส้นกำกับแนวตั้ง:</b> ${KT(`x=${hTex}`)}, โดเมน:
+          ${prob.isMirrored ? KT(`x<${hTex}`) : KT(`x>${hTex}`)}</div>
       `;
     }
   }
