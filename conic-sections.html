@@ -10,6 +10,16 @@
   .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
   .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
   .katex .msupsub { margin-left: 0.08em; }
+
+  /* Shared mathematics typography fallback for non-KaTeX text */
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+  .math-unit {
+    font-family: "Times New Roman", Times, serif;
+    font-style: normal;
+  }
 </style>
 <style>
   :root {
@@ -91,18 +101,6 @@
   .answer-row:last-child { margin-bottom: 0; }
   .answer-row b { color: var(--gold); }
   .answer-row .std-eq { font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 19px); color: var(--ink); }
-  .frac {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    vertical-align: middle;
-    margin: 0 0.1em;
-    line-height: 1.05;
-  }
-  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
-  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.04em; }
-  .frac .den { padding-top: 0.04em; }
-
   .prompt {
     margin-top: 18px;
     font-size: clamp(14px, 2vw, 20px);
@@ -244,7 +242,7 @@
       <div class="desc">กำหนดช่วงพิกัดจุดสำคัญ และช่วงพารามิเตอร์แต่ละรูปทรง</div>
 
       <div class="field-group">
-        <div class="label">พิกัดจุดศูนย์กลาง/จุดยอด (h, k)</div>
+        <div class="label">พิกัดจุดศูนย์กลาง/จุดยอด (<span class="math-var">h</span>, <span class="math-var">k</span>)</div>
         <div class="field-row">
           <span class="mini-label">ต่ำสุด</span><input type="number" id="coordMin">
           <span class="mini-label">สูงสุด</span><input type="number" id="coordMax">
@@ -252,7 +250,7 @@
       </div>
 
       <div class="field-group">
-        <div class="label">รัศมีวงกลม (r)</div>
+        <div class="label">รัศมีวงกลม (<span class="math-var">r</span>)</div>
         <div class="field-row">
           <span class="mini-label">ต่ำสุด</span><input type="number" id="rMin">
           <span class="mini-label">สูงสุด</span><input type="number" id="rMax">
@@ -260,7 +258,7 @@
       </div>
 
       <div class="field-group">
-        <div class="label">ระยะโฟกัสพาราโบลา |c|</div>
+        <div class="label">ระยะโฟกัสพาราโบลา |<span class="math-var">c</span>|</div>
         <div class="field-row">
           <span class="mini-label">ต่ำสุด</span><input type="number" id="cMin">
           <span class="mini-label">สูงสุด</span><input type="number" id="cMax">
@@ -268,7 +266,7 @@
       </div>
 
       <div class="field-group">
-        <div class="label">a ของวงรี/ไฮเพอร์โบลา (ครึ่งแกนยาว)</div>
+        <div class="label"><span class="math-var">a</span> ของวงรี/ไฮเพอร์โบลา (ครึ่งแกนยาว)</div>
         <div class="field-row">
           <span class="mini-label">ต่ำสุด</span><input type="number" id="aMin">
           <span class="mini-label">สูงสุด</span><input type="number" id="aMax">
@@ -276,7 +274,7 @@
       </div>
 
       <div class="field-group">
-        <div class="label">b ของไฮเพอร์โบลา (ครึ่งแกนสังยุค)</div>
+        <div class="label"><span class="math-var">b</span> ของไฮเพอร์โบลา (ครึ่งแกนสังยุค)</div>
         <div class="field-row">
           <span class="mini-label">ต่ำสุด</span><input type="number" id="bMin">
           <span class="mini-label">สูงสุด</span><input type="number" id="bMax">
@@ -386,10 +384,6 @@
   function signedNumLatex(n) { return n < 0 ? `-${Math.abs(n)}` : `+${n}`; }
   function fmtNum(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
   function coordStr(h, k) { return KT(`(${fmtNum(h)},\\ ${fmtNum(k)})`); }
-  function fracHTML(num, den) {
-    return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`;
-  }
-
   /* =========================================================
      GRAPH RENDERING
      One shared coordinate system per problem (x,y scaled equally,
@@ -452,8 +446,10 @@
   function svgDot(x, y, r, color) {
     return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}" stroke="#232D63" stroke-width="1"/>`;
   }
-  function svgLabel(x, y, text, color, size, anchor) {
-    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${size}" fill="${color}" font-weight="700" text-anchor="${anchor || "middle"}" font-family="Calibri, sans-serif">${text}</text>`;
+  function svgLabel(x, y, text, color, size, anchor, isMath = false) {
+    const family = isMath ? "Times New Roman, Times, serif" : "Calibri, sans-serif";
+    const style = isMath ? "italic" : "normal";
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${size}" fill="${color}" font-weight="700" text-anchor="${anchor || "middle"}" font-family="${family}" font-style="${style}">${text}</text>`;
   }
 
   function buildConicGraph(prob) {
@@ -482,7 +478,7 @@
       }
       svg += `<path d="${d}" fill="none" stroke="${CURVE}" stroke-width="2.5"/>`;
       svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
-      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
+      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e08\u0e38\u0e14\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
 
     } else if (type === "parabola") {
       const c = params.c;
@@ -542,7 +538,7 @@
         svg += svgLabel(toPx(h) + 14, toPy(k + c), "F\u2082", CORAL, 11);
       }
       svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
-      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
+      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e08\u0e38\u0e14\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
 
     } else { // hyperbola
       const { a, b, axis } = params;
@@ -576,7 +572,7 @@
       svg += svgLabel(toPx(fx) + (axis === "x" ? 0 : 14), toPy(fy) + (axis === "x" ? -10 : 4), "F\u2081", CORAL, 11);
       svg += svgLabel(toPx(fx2) + (axis === "x" ? 0 : 14), toPy(fy2) + (axis === "x" ? -10 : 4), "F\u2082", CORAL, 11);
       svg += svgDot(toPx(h), toPy(k), 4.5, GOLD);
-      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
+      svg += svgLabel(toPx(h), toPy(k) - 10, "\u0e08\u0e38\u0e14\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e01\u0e25\u0e32\u0e07", GOLD, 11);
     }
 
     svg += "</svg>";
@@ -606,7 +602,7 @@
       posLabel = "จุดยอด";
       posVal = coordStr(h, k);
       extraRows.push(KT(`c = ${params.c} \\;(\\text{ระยะโฟกัสจากจุดยอด})`));
-      extraRows.push(`แกนสมมาตรขนานแกน ${params.axis} (เปิดไปทาง${params.c > 0 ? (params.axis === "x" ? "ขวา" : "บน") : (params.axis === "x" ? "ซ้าย" : "ล่าง")})`);
+      extraRows.push(`แกนสมมาตรขนานแกน ${KT(params.axis)} (เปิดไปทาง${params.c > 0 ? (params.axis === "x" ? "ขวา" : "บน") : (params.axis === "x" ? "ซ้าย" : "ล่าง")})`);
     } else if (type === "ellipse") {
       typeName = "วงรี (Ellipse)";
       if (params.axis === "x") {
@@ -617,7 +613,7 @@
       posLabel = "จุดศูนย์กลาง";
       posVal = coordStr(h, k);
       extraRows.push(KT(`a = ${params.a} \\;(\\text{ครึ่งแกนเอก}) \\qquad b = ${params.b} \\;(\\text{ครึ่งแกนโท})`));
-      extraRows.push(`แกนเอกขนานแกน ${params.axis}`);
+      extraRows.push(`แกนเอกขนานแกน ${KT(params.axis)}`);
     } else {
       typeName = "ไฮเพอร์โบลา (Hyperbola)";
       if (params.axis === "x") {
@@ -629,7 +625,7 @@
       posVal = coordStr(h, k);
       extraRows.push(KT(`a = ${params.a},\\ b = ${params.b}`));
       const asymLatex = params.axis === "x" ? `\\dfrac{${params.b}}{${params.a}}` : `\\dfrac{${params.a}}{${params.b}}`;
-      extraRows.push(`แกนตามขวางขนานแกน ${params.axis}` + `&nbsp;&nbsp;` + KT(`\\text{เส้นกำกับ:}\\; y = \\pm${asymLatex}x`) + ` (สัมพัทธ์กับศูนย์กลาง)`);
+      extraRows.push(`แกนตามขวางขนานแกน ${params.axis}` + `&nbsp;&nbsp;` + KT(`\\text{เส้นกำกับ:}\\; y = \\pm${asymLatex}x`) + ` (สัมพัทธ์กับจุดศูนย์กลาง)`);
     }
 
     let html = `<div class="answer-row"><b>ชนิด:</b> ${typeName}</div>`;
