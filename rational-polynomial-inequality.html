@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>อสมการเศษส่วนพหุนาม</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   :root {
     --navy: #2F3C7E; --navy-deep: #232D63; --coral: #F96167; --coral-deep: #E14A50;
@@ -31,8 +33,11 @@
     flex: 1; width: 100%; z-index: 1; padding: 10px 20px; overflow-y: auto;
   }
 
+  .math-var { font-family: "Times New Roman", Times, serif; font-style: italic; }
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Times, serif !important; }
+
   .expr {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(17px, 3.2vw, 26px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(17px, 3.2vw, 26px); font-weight: 700;
     text-align: center; line-height: 1.6; max-width: 95vw; transition: opacity 0.15s ease, transform 0.15s ease;
   }
   .expr.swap { opacity: 0; transform: scale(0.94); }
@@ -61,15 +66,21 @@
   .frac .den { padding-top: 0.03em; }
 
   .sign-table-wrap { overflow-x: auto; margin-bottom: 12px; }
-  .sign-table { border-collapse: collapse; font-family: "Consolas", "Cambria", monospace; font-size: clamp(12px, 1.8vw, 14.5px); margin: 0 auto; }
+  .sign-table { border-collapse: collapse; font-family: "Times New Roman", Times, serif; font-size: clamp(12px, 1.8vw, 14.5px); margin: 0 auto; }
   .sign-table td { padding: 5px 9px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.12); }
   .sign-table .factor-label-cell { text-align: right; padding-right: 12px; color: var(--muted); border-right: 1.5px solid var(--gold); }
   .sign-table .combined-row td { font-weight: 700; color: var(--gold); border-top: 1.5px solid var(--ink); }
+  /* Explanatory annotations inside mathematical tables stay upright/regular. */
+  .annotation-regular {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans Thai", sans-serif;
+    font-style: normal;
+    font-weight: inherit;
+  }
   .sign-pos { color: #8FD3F4; font-weight: 700; }
   .sign-neg { color: var(--coral); font-weight: 700; }
 
   .solution-line {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
     text-align: center; color: var(--gold); margin-top: 12px;
   }
   .section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
@@ -158,8 +169,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อถัดไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -170,6 +181,11 @@
   </div>
 
 <script>
+  function KT(tex, displayMode = false) {
+    if (window.katex) return katex.renderToString(tex, { throwOnError: false, displayMode });
+    return tex;
+  }
+
   /* =========================================================
      1. UTILITIES
      ========================================================= */
@@ -354,6 +370,55 @@
     return { intervals, isolated, markers };
   }
 
+  function latexPoly(coeffs) {
+    const n = coeffs.length - 1;
+    let out = "", first = true;
+    for (let i = 0; i <= n; i++) {
+      const c = coeffs[i]; if (c === 0) continue;
+      const power = n - i, ac = Math.abs(c);
+      const sign = c < 0 ? (first ? "-" : " - ") : (first ? "" : " + ");
+      const variable = power === 0 ? "" : power === 1 ? "x" : `x^{${power}}`;
+      const coef = (ac === 1 && variable) ? "" : `${ac}`;
+      out += sign + coef + variable; first = false;
+    }
+    return out || "0";
+  }
+  function latexLinearFactor(f) {
+    let base;
+    if (f.q === 1) base = f.p === 0 ? "x" : f.p > 0 ? `(x-${f.p})` : `(x+${Math.abs(f.p)})`;
+    else base = `(${f.q}x${f.p > 0 ? "-" : "+"}${Math.abs(f.p)})`;
+    return f.mult === 1 ? base : `${base}^{${f.mult}}`;
+  }
+  function latexFactor(f) { return f.kind === "quad" ? `(${latexPoly(f.coeffs)})` : latexLinearFactor(f); }
+  function latexFactoredPart(part) { return part.factors.map(latexFactor).join(""); }
+  function latexRootPQ(p, q) {
+    if (q === 1) return `${p}`;
+    return p < 0 ? `-\\frac{${Math.abs(p)}}{${q}}` : `\\frac{${p}}{${q}}`;
+  }
+  function latexBound(v) {
+    if (v === -Infinity) return "-\\infty";
+    if (v === Infinity) return "\\infty";
+    if (Number.isInteger(v)) return `${v}`;
+    const fr = reduceFrac(Math.round(v * 60), 60);
+    return latexRootPQ(fr.p, fr.q);
+  }
+  function latexSolutionSet(sol) {
+    const parts = [];
+    const sortedIntervals = [...sol.intervals].sort((a, b) => a.lo - b.lo);
+    for (const iv of sortedIntervals) {
+      const lb = iv.lo === -Infinity ? "(" : (iv.closedLo ? "[" : "(");
+      const rb = iv.hi === Infinity ? ")" : (iv.closedHi ? "]" : ")");
+      parts.push(`${lb}${latexBound(iv.lo)},\\,${latexBound(iv.hi)}${rb}`);
+    }
+    for (const iso of sol.isolated) parts.push(`\\{${latexRootPQ(iso.p, iso.q)}\\}`);
+    return parts.length ? parts.join("\\cup") : "\\varnothing";
+  }
+  function latexRegion(r) {
+    if (r.lo === -Infinity) return `x<${latexBound(r.hi)}`;
+    if (r.hi === Infinity) return `x>${latexBound(r.lo)}`;
+    return `${latexBound(r.lo)}<x<${latexBound(r.hi)}`;
+  }
+
   /* =========================================================
      4. FORMATTING
      ========================================================= */
@@ -376,7 +441,7 @@
   function fmtHiddenProblem(prob) {
     const numStr = fmtPolyExpanded(prob.numer.poly);
     const denStr = fmtPolyExpanded(prob.denom.poly);
-    return `<span class="frac-display"><span class="fnum">${numStr}</span><span class="fden">${denStr}</span></span> ${fmtIneqSymbol(prob.ineq)} 0`;
+    return KT(`\\dfrac{${latexPoly(prob.numer.poly)}}{${latexPoly(prob.denom.poly)}} ${fmtIneqSymbol(prob.ineq)} 0`);
   }
   function fmtLinearFactor(f) {
     const base = f.q === 1
@@ -389,7 +454,7 @@
     return part.factors.map(f => f.kind === "quad" ? fmtQuadFactor(f) : fmtLinearFactor(f)).join("");
   }
   function fmtFactoredDisplay(prob) {
-    return `<span class="frac-display"><span class="fnum">${fmtFactoredPart(prob.numer)}</span><span class="fden">${fmtFactoredPart(prob.denom)}</span></span> ${fmtIneqSymbol(prob.ineq)} 0`;
+    return KT(`\\frac{${latexFactoredPart(prob.numer)}}{${latexFactoredPart(prob.denom)}} ${fmtIneqSymbol(prob.ineq)} 0`);
   }
   function fmtRootLabel(m) { return m.q === 1 ? fmtSigned(m.p) : (m.p < 0 ? `\u2212${fracHTML({ p: -m.p, q: m.q })}` : fracHTML(m)); }
   function fmtIntervalBound(v) {
@@ -429,11 +494,11 @@
     const allFactors = [...prob.numer.factors.map(f => ({ ...f, part: "num" })), ...prob.denom.factors.map(f => ({ ...f, part: "den" }))];
     let html = `<div class="sign-table-wrap"><table class="sign-table"><tbody>`;
     html += `<tr><td class="factor-label-cell">\u0e0a\u0e48\u0e27\u0e07</td>`;
-    for (const r of regions) html += `<td style="font-size:0.85em; color:var(--muted); white-space:nowrap;">${fmtRegionLabel(r)}</td>`;
+    for (const r of regions) html += `<td style="font-size:0.85em; color:var(--muted); white-space:nowrap;">${KT(latexRegion(r))}</td>`;
     html += `</tr>`;
     for (const f of allFactors) {
-      const label = f.kind === "quad" ? fmtQuadFactor(f) : fmtLinearFactor(f);
-      html += `<tr><td class="factor-label-cell">${label}${f.part === "den" ? " <i>(\u0e2a\u0e48\u0e27\u0e19)</i>" : ""}</td>`;
+      const label = KT(latexFactor(f));
+      html += `<tr><td class="factor-label-cell">${label}${f.part === "den" ? " <span class=\"annotation-regular\">(\u0e2a\u0e48\u0e27\u0e19)</span>" : ""}</td>`;
       for (const r of regions) {
         // use the sign AFTER applying this factor's own multiplicity (factorSignPow) — the
         // row is labelled WITH its exponent (e.g. "x^2"), so the sign shown must already
@@ -476,13 +541,13 @@
       const isDen = m.den;
       const included = !isDen && (sol.intervals.some(iv => (iv.lo === x && iv.closedLo) || (iv.hi === x && iv.closedHi)) || sol.isolated.some(iso => Math.abs(iso.p / iso.q - x) < 1e-9));
       svg += `<circle cx="${px.toFixed(1)}" cy="${midY}" r="5" fill="${included ? GOLD : "none"}" stroke="${isDen ? DEN_COLOR : GOLD}" stroke-width="2"/>`;
-      svg += `<text x="${px.toFixed(1)}" y="${midY + 24}" font-size="12" fill="${isDen ? DEN_COLOR : GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${fmtRootLabelPlain(m)}</text>`;
+      svg += `<text x="${px.toFixed(1)}" y="${midY + 24}" font-size="12" fill="${isDen ? DEN_COLOR : GOLD}" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${fmtRootLabelPlain(m)}</text>`;
     }
     const bounds = [xLo, ...vals.slice().sort((a, b) => a - b), xHi];
     for (let i = 0; i < bounds.length - 1; i++) {
       const mid = (bounds[i] + bounds[i + 1]) / 2;
       const s = combinedSignAt(prob, mid);
-      svg += `<text x="${toPx(mid).toFixed(1)}" y="${midY - 12}" font-size="14" fill="${s > 0 ? "#8FD3F4" : DEN_COLOR}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${s > 0 ? "+" : "\u2212"}</text>`;
+      svg += `<text x="${toPx(mid).toFixed(1)}" y="${midY - 12}" font-size="14" fill="${s > 0 ? "#8FD3F4" : DEN_COLOR}" font-weight="700" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${s > 0 ? "+" : "\u2212"}</text>`;
     }
     svg += "</svg>";
     return svg;
@@ -520,6 +585,7 @@
     exprEl.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "แยกตัวประกอบเศษและส่วน แล้วตรวจเครื่องหมาย แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -527,8 +593,9 @@
     const sol = determineSolution(current);
     numberlineBox.innerHTML = buildNumberLine(current, sol);
     answerCard.innerHTML = buildAnswerCardHTML(current) +
-      `<div class="solution-line">x \u2208 ${fmtSolutionSet(sol)}</div>`;
+      `<div class="solution-line">${KT(`x \\in ${latexSolutionSet(sol)}`)}</div>`;
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); answerWrap.classList.add("swap");
