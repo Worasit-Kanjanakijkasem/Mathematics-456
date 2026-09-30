@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>อสมการพหุนาม</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -29,6 +31,15 @@
     user-select: none;
     position: relative;
   }
+  /* Mathematics typography */
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit {
+    font-family: "Times New Roman", Times, serif !important;
+  }
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+
   .blob { position: absolute; border-radius: 50%; pointer-events: none; }
   .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
   .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
@@ -58,7 +69,7 @@
   }
 
   .expr {
-    font-family: "Cambria", "Georgia", serif;
+    font-family: "Times New Roman", Times, serif;
     font-size: clamp(19px, 3.6vw, 30px);
     font-weight: 700;
     text-align: center;
@@ -94,7 +105,7 @@
 
   .synth-section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
   .synth-table-wrap { overflow-x: auto; margin-bottom: 12px; }
-  .synth-table { border-collapse: collapse; font-family: "Consolas", "Cambria", monospace; font-size: clamp(13px, 2vw, 16px); margin: 0 auto; }
+  .synth-table { border-collapse: collapse; font-family: "Times New Roman", Times, serif; font-size: clamp(13px, 2vw, 16px); margin: 0 auto; }
   .synth-table td { padding: 4px 10px; text-align: center; min-width: 34px; }
   .synth-root-cell { border-right: 1.5px solid var(--gold); font-weight: 700; color: var(--gold); padding-right: 12px; }
   .synth-coef-row td { font-weight: 700; }
@@ -102,11 +113,11 @@
   .synth-remainder { color: var(--coral); }
 
   .factored-line {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
     text-align: center; color: var(--gold); margin-top: 10px; line-height: 1.6;
   }
   .solution-line {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
     text-align: center; color: var(--gold); margin-top: 12px;
   }
 
@@ -196,8 +207,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -223,6 +234,52 @@
   </div>
 
 <script>
+  function KT(tex) {
+    return katex.renderToString(tex, { throwOnError: false });
+  }
+
+  function polyLatex(coeffs) {
+    const n = coeffs.length - 1;
+    let parts = [];
+    for (let i = 0; i <= n; i++) {
+      const c = coeffs[i];
+      if (c === 0 && i !== n) continue;
+      const power = n - i;
+      const ac = Math.abs(c);
+      let term = "";
+      if (power === 0) term = `${ac}`;
+      else if (power === 1) term = `${ac === 1 ? "" : ac}x`;
+      else term = `${ac === 1 ? "" : ac}x^{${power}}`;
+      if (!parts.length) parts.push(c < 0 ? `-${term}` : term);
+      else parts.push(c < 0 ? `- ${term}` : `+ ${term}`);
+    }
+    return parts.join(" ");
+  }
+
+  function hiddenLatex(prob) {
+    const coeffs = prob.poly.slice(0, -1).concat([prob.hiddenConst]);
+    return `${polyLatex(coeffs)} ${fmtIneqSymbol(prob.ineq)} ${prob.d}`;
+  }
+
+  function vsZeroLatex(prob) {
+    return `${polyLatex(prob.poly)} ${fmtIneqSymbol(prob.ineq)} 0`;
+  }
+
+  function factorLatex(rc) {
+    let base;
+    if (rc.q === 1) {
+      base = rc.p === 0 ? "x" : rc.p > 0 ? `(x-${rc.p})` : `(x+${Math.abs(rc.p)})`;
+    } else {
+      base = `(${rc.q}x${rc.p > 0 ? "-" : "+"}${Math.abs(rc.p)})`;
+    }
+    return rc.mult === 1 ? base : `${base}^{${rc.mult}}`;
+  }
+
+  function factoredLatex(prob) {
+    const lead = prob.poly[0] === 1 ? "" : `${prob.poly[0]}`;
+    return `${lead}${prob.rootCounts.map(factorLatex).join("")} ${fmtIneqSymbol(prob.ineq)} 0`;
+  }
+
   /* =========================================================
      1. CONFIG
      ========================================================= */
@@ -444,6 +501,30 @@
     return parts.join(" \u222a ");
   }
 
+
+  function boundLatex(v) {
+    if (v === -Infinity) return "-\\infty";
+    if (v === Infinity) return "\\infty";
+    if (Number.isInteger(v)) return `${v}`;
+    const fr = reduceFrac(Math.round(v * 12), 12);
+    return fr.q === 1 ? `${fr.p}` : `\\frac{${fr.p}}{${fr.q}}`;
+  }
+
+  function solutionSetLatex(prob, sol) {
+    const parts = [];
+    for (const iv of sol.intervals) {
+      const lb = iv.lo === -Infinity ? "(" : (iv.closedLo ? "[" : "(");
+      const rb = iv.hi === Infinity ? ")" : (iv.closedHi ? "]" : ")");
+      parts.push(`${lb}${boundLatex(iv.lo)},\\,${boundLatex(iv.hi)}${rb}`);
+    }
+    for (const iso of sol.isolated) {
+      const value = iso.q === 1 ? `${iso.p}` : `\\frac{${iso.p}}{${iso.q}}`;
+      parts.push(`\\{${value}\\}`);
+    }
+    if (!parts.length) return "\\varnothing";
+    return parts.join(" \\cup ");
+  }
+
   /* =========================================================
      6. SYNTHETIC DIVISION TABLE (reused pattern, Format A —
      one continuous cascading table, every divisor aligned at the
@@ -469,9 +550,9 @@
     return `<div class="synth-table-wrap"><table class="synth-table"><tbody>${rowsHTML}</tbody></table></div>`;
   }
   function fmtDivisorLabel(rc) {
-    if (rc.q === 1) return `x = ${fmtSigned(rc.p)}`;
+    if (rc.q === 1) return `<span class="math-var">x</span> = ${fmtSigned(rc.p)}`;
     const sign = rc.p < 0 ? "\u2212" : "";
-    return `x = ${sign}<span class="frac"><span class="num">${Math.abs(rc.p)}</span><span class="den">${rc.q}</span></span>`;
+    return `<span class="math-var">x</span> = ${sign}<span class="frac"><span class="num">${Math.abs(rc.p)}</span><span class="den">${rc.q}</span></span>`;
   }
 
   /* =========================================================
@@ -526,13 +607,13 @@
     const uniqRoots = [...new Set(roots)].sort((a, b) => a - b);
     for (const r of uniqRoots) {
       lInner += `<line x1="${toPx(r).toFixed(1)}" y1="${(HLine/2-6).toFixed(1)}" x2="${toPx(r).toFixed(1)}" y2="${(HLine/2+6).toFixed(1)}" stroke="${GOLD}" stroke-width="2"/>`;
-      lInner += `<text x="${toPx(r).toFixed(1)}" y="${(HLine/2+20).toFixed(1)}" font-size="11" fill="${GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${Number.isInteger(r) ? r : r.toFixed(2)}</text>`;
+      lInner += `<text x="${toPx(r).toFixed(1)}" y="${(HLine/2+20).toFixed(1)}" font-size="11" fill="${GOLD}" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${Number.isInteger(r) ? r : r.toFixed(2)}</text>`;
     }
     const bounds = [xLo, ...uniqRoots, xHi];
     for (let i = 0; i < bounds.length - 1; i++) {
       const mid = (bounds[i] + bounds[i + 1]) / 2;
       const s = signAt(prob.rootCounts, prob.poly[0], mid);
-      lInner += `<text x="${toPx(mid).toFixed(1)}" y="${(HLine/2-10).toFixed(1)}" font-size="13" fill="${s>0?"#8FD3F4":"#F96167"}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${s>0?"+":"\u2212"}</text>`;
+      lInner += `<text x="${toPx(mid).toFixed(1)}" y="${(HLine/2-10).toFixed(1)}" font-size="13" fill="${s>0?"#8FD3F4":"#F96167"}" font-weight="700" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${s>0?"+":"\u2212"}</text>`;
     }
     svg += `<g transform="translate(0,${HGraph + gap})">${lInner}</g>`;
 
@@ -586,11 +667,11 @@
   function buildAnswerCardHTML(prob) {
     return `
       <div class="answer-row"><b>1. จัดรูปให้ด้านขวาเป็น 0</b> (ลบ ${prob.d} ทั้งสองข้าง):</div>
-      <div class="answer-row" style="text-align:center;">${fmtPolyVs0(prob)}</div>
+      <div class="answer-row" style="text-align:center;">${KT(vsZeroLatex(prob))}</div>
       <div class="synth-section-title">2. การหารสังเคราะห์ (แยกตัวประกอบ):</div>
       ${buildAllSynthSteps(prob)}
       <div class="synth-section-title">3. รูปแบบตัวประกอบ:</div>
-      <div class="factored-line">${fmtFactoredForm(prob)}</div>
+      <div class="factored-line">${KT(factoredLatex(prob))}</div>
       <div class="synth-section-title">4. กราฟและเส้นจำนวน (เครื่องหมายแต่ละซอง):</div>
     `;
   }
@@ -599,6 +680,7 @@
     exprEl.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "จัดรูปให้ด้านขวาเป็น 0 แล้วแยกตัวประกอบ แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -606,14 +688,15 @@
     graphBox.innerHTML = buildGraphAndLine(current);
     answerCard.innerHTML = buildAnswerCardHTML(current);
     const sol = determineSolution(current);
-    answerCard.innerHTML += `<div class="solution-line">${fmtFactoredForm(current)} \u2192 x \u2208 ${fmtSolutionSet(current, sol)}</div>`;
+    answerCard.innerHTML += `<div class="solution-line">${KT(`${factoredLatex(current)} \\;\\Rightarrow\\; x \\in ${solutionSetLatex(current, sol)}`)}</div>`;
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); answerWrap.classList.add("swap");
     setTimeout(() => {
       current = generateProblem();
-      exprEl.innerHTML = fmtPolyHidden(current);
+      exprEl.innerHTML = KT(hiddenLatex(current));
       displayProblem();
       exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
     }, 150);
@@ -655,7 +738,7 @@
   });
 
   current = generateProblem();
-  exprEl.innerHTML = fmtPolyHidden(current);
+  exprEl.innerHTML = KT(hiddenLatex(current));
   displayProblem();
 </script>
 </body>
