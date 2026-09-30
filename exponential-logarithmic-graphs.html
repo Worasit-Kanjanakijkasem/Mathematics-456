@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>กราฟเอ็กซ์โพเนนเชียลและลอการิทึม</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   :root {
     --navy: #2F3C7E; --navy-deep: #232D63; --coral: #F96167; --coral-deep: #E14A50;
@@ -37,6 +39,20 @@
     text-align: center; line-height: 1.6; max-width: 95vw; transition: opacity 0.15s ease, transform 0.15s ease;
   }
   .expr.swap { opacity: 0; transform: scale(0.94); }
+
+  /* Mathematics typography */
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit {
+    font-family: "Times New Roman", Times, serif !important;
+  }
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+  .math-regular {
+    font-family: "Times New Roman", Times, serif;
+    font-style: normal;
+  }
+
 
   .answer-wrap { transition: opacity 0.15s ease, transform 0.15s ease; text-align: left; max-width: 640px; width: 100%; }
   .answer-wrap.swap { opacity: 0; transform: scale(0.94); }
@@ -144,8 +160,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -248,6 +264,39 @@
     if (cfg.enableLog) options.push("log");
     if (!options.length) options.push("exp");
     return choice(options) === "exp" ? genExp() : genLog();
+  }
+
+  /* Presentation helpers only — no generation/calculation logic */
+  function latexFrac(fr) {
+    if (fr.q === 1) return `${fr.p}`;
+    const sign = fr.p < 0 ? "-" : "";
+    return `${sign}\\dfrac{${Math.abs(fr.p)}}{${fr.q}}`;
+  }
+  function latexSigned(n) { return n < 0 ? `-${Math.abs(n)}` : `${n}`; }
+  function latexCoeff(n) { if (n === 1) return ""; if (n === -1) return "-"; return latexSigned(n); }
+  function latexProblem(prob) {
+    if (prob.type === "exp") {
+      const base = prob.base.q === 1 ? `${prob.base.p}` : `\\left(${latexFrac(prob.base)}\\right)`;
+      const h = prob.h === 0 ? "x" : (prob.h > 0 ? `x-${prob.h}` : `x+${Math.abs(prob.h)}`);
+      const k = prob.k === 0 ? "" : (prob.k > 0 ? `+${prob.k}` : `-${Math.abs(prob.k)}`);
+      return `y=${latexCoeff(prob.c)}${base}^{${h}}${k}`;
+    }
+    const B = latexFrac(prob.B);
+    const bx = prob.B.p === prob.B.q ? "x" : (prob.B.p === -prob.B.q ? "-x" : `${B}x`);
+    const c = prob.C === 0 ? "" : (prob.C > 0 ? `+${prob.C}` : `-${Math.abs(prob.C)}`);
+    const d = prob.D === 0 ? "" : (prob.D > 0 ? `+${prob.D}` : `-${Math.abs(prob.D)}`);
+    return `y=${latexCoeff(prob.A)}\\log_{${prob.base}}\\!\\left(${bx}${c}\\right)${d}`;
+  }
+  function latexStandard(prob) {
+    if (prob.type === "exp") return latexProblem(prob);
+    const h = latexFrac(prob.h);
+    const inner = prob.isMirrored ? `${h}-x` : (prob.h.p < 0 ? `x-\\left(${h}\\right)` : `x-${h}`);
+    const k = prob.k === 0 ? "" : (prob.k > 0 ? `+${prob.k}` : `-${Math.abs(prob.k)}`);
+    return `y=${latexCoeff(prob.A)}\\log_{${prob.base}}\\!\\left(${inner}\\right)${k}`;
+  }
+  function renderMath(el, latex, displayMode = false) {
+    if (window.katex) katex.render(latex, el, { throwOnError: false, displayMode });
+    else el.textContent = latex;
   }
 
   /* =========================================================
@@ -377,8 +426,8 @@
     svg += `<line x1="${toPx(hVal).toFixed(1)}" y1="${padT - 2}" x2="${toPx(hVal).toFixed(1)}" y2="${H - padB + 2}" stroke="${GOLD}" stroke-width="1.4" stroke-dasharray="5 4"/>`;
     svg += `<line x1="${padL - 2}" y1="${toPy(kVal).toFixed(1)}" x2="${W - padR + 2}" y2="${toPy(kVal).toFixed(1)}" stroke="${GOLD}" stroke-width="1.4" stroke-dasharray="5 4"/>`;
     const hDisplay = prob.type === "log" ? fracHTMLPlain(prob.h) : fmtSigned(hVal);
-    svg += `<text x="${(toPx(hVal) + 4).toFixed(1)}" y="${(padT + 10).toFixed(1)}" font-size="11" fill="${GOLD}" font-weight="700" font-family="Calibri, sans-serif">x=${hDisplay}</text>`;
-    svg += `<text x="${(W - padR - 4).toFixed(1)}" y="${(toPy(kVal) - 6).toFixed(1)}" font-size="11" fill="${GOLD}" font-weight="700" text-anchor="end" font-family="Calibri, sans-serif">y=${fmtSigned(kVal)}</text>`;
+    svg += `<text x="${(toPx(hVal) + 4).toFixed(1)}" y="${(padT + 10).toFixed(1)}" font-size="11" fill="${GOLD}" font-weight="700"><tspan font-family="Times New Roman, Times, serif" font-style="italic">x</tspan><tspan font-family="Times New Roman, Times, serif" font-style="normal">=${hDisplay}</tspan></text>`;
+    svg += `<text x="${(W - padR - 4).toFixed(1)}" y="${(toPy(kVal) - 6).toFixed(1)}" font-size="11" fill="${GOLD}" font-weight="700" text-anchor="end"><tspan font-family="Times New Roman, Times, serif" font-style="italic">y</tspan><tspan font-family="Times New Roman, Times, serif" font-style="normal">=${fmtSigned(kVal)}</tspan></text>`;
     // the curve
     let d = "";
     pts.forEach(([x, y], i) => { d += (i === 0 ? "M" : "L") + toPx(x).toFixed(1) + "," + toPy(y).toFixed(1) + " "; });
@@ -389,7 +438,7 @@
     // text refers to, so viewers can see at a glance what each letter's actual value is
     // (per explicit request — previously only the (h,k) reference lines were labelled)
     const eqLabel = fmtProblemPlain(prob);
-    svg += `<text x="${(W / 2).toFixed(1)}" y="16" font-size="12" fill="${GOLD}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${eqLabel}</text>`;
+    svg += `<text x="${(W / 2).toFixed(1)}" y="16" font-size="12" fill="${GOLD}" font-weight="700" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="italic">${eqLabel}</text>`;
     svg += "</svg>";
     return svg;
   }
@@ -453,20 +502,28 @@
     exprEl.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "จัดรูปเป็นมาตรฐาน แล้วร่างกราฟ แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
+
+  function applyAnswerTypography() {
+    // Ordinary HTML fallback: mathematical single-letter symbols are Times New Roman italic.
+    answerCard.querySelectorAll(".math-var").forEach(() => {});
+  }
+
   function displayAnswer() {
     exprEl.style.display = "none";
     answerWrap.style.display = "";
     graphBox.innerHTML = buildGraph(current);
     answerCard.innerHTML = buildAnswerCard(current);
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); answerWrap.classList.add("swap");
     setTimeout(() => {
       current = generateProblem();
       typeBadge.textContent = TYPE_LABELS[current.type];
-      exprEl.innerHTML = fmtProblem(current);
+      renderMath(exprEl, latexProblem(current), true);
       displayProblem();
       exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
     }, 150);
@@ -509,7 +566,7 @@
 
   current = generateProblem();
   typeBadge.textContent = TYPE_LABELS[current.type];
-  exprEl.innerHTML = fmtProblem(current);
+  renderMath(exprEl, latexProblem(current), true);
   displayProblem();
 </script>
 </body>
