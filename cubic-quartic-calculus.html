@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>อนุพันธ์และลักษณะกราฟ</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
+  .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
+  .katex .msupsub { margin-left: 0.08em; }
+</style>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -185,8 +192,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -629,51 +636,60 @@
   /* =========================================================
      7. FORMATTING (Thai text + stacked-fraction HTML)
      ========================================================= */
-  function fracHTML(fr) {
-    const sign = fr.p < 0 ? "\u2212" : "";
+  function KT(latex) {
+    try { return katex.renderToString(latex, { throwOnError: false }); }
+    catch (e) { return latex; }
+  }
+  // raw LaTeX fragment for a fraction/whole number (NOT rendered on its own —
+  // meant to be embedded inside a larger KT() call so the whole expression
+  // renders as one continuous piece of math)
+  function fracLatex(fr) {
+    const sign = fr.p < 0 ? "-" : "";
     const ap = Math.abs(fr.p);
     if (fr.q === 1) return `${sign}${ap}`;
-    return `${sign}<span class="frac"><span class="num">${ap}</span><span class="den">${fr.q}</span></span>`;
+    return `${sign}\\dfrac{${ap}}{${fr.q}}`;
   }
-  function fmtNum(n) {
-    if (Number.isInteger(n)) return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`;
-    return fracHTML(toCleanFraction(n) || F(Math.round(n * 100), 100));
+  function fracHTML(fr) { return KT(fracLatex(fr)); }
+  function fmtNumLatex(n) {
+    if (Number.isInteger(n)) return n < 0 ? `-${Math.abs(n)}` : `${n}`;
+    return fracLatex(toCleanFraction(n) || F(Math.round(n * 100), 100));
   }
-  function fmtSignedTerm(fr, isFirst) {
-    const sign = fr.p >= 0 ? (isFirst ? "" : " + ") : (isFirst ? "\u2212" : " \u2212 ");
+  function fmtNum(n) { return KT(fmtNumLatex(n)); }
+  function fmtSignedTermLatex(fr, isFirst) {
+    const sign = fr.p >= 0 ? (isFirst ? "" : " + ") : (isFirst ? "-" : " - ");
     const ap = { p: Math.abs(fr.p), q: fr.q };
-    return sign + fracHTML(ap);
+    return sign + fracLatex(ap);
   }
 
   function fmtPolynomial(prob) {
     let s = "";
     let first = true;
     if (prob.e.p !== 0) {
-      const coeffStr = (prob.e.p === 1 && prob.e.q === 1) ? "" : (prob.e.p === -1 && prob.e.q === 1) ? "\u2212" : fmtSignedTerm(prob.e, true);
-      s += coeffStr + "x\u2074"; first = false;
+      const coeffStr = (prob.e.p === 1 && prob.e.q === 1) ? "" : (prob.e.p === -1 && prob.e.q === 1) ? "-" : fmtSignedTermLatex(prob.e, true);
+      s += coeffStr + "x^4"; first = false;
     }
     if (prob.a.p !== 0) {
       const term = (Math.abs(prob.a.p) === 1 && prob.a.q === 1)
-        ? (first ? (prob.a.p > 0 ? "" : "\u2212") : (prob.a.p > 0 ? " + " : " \u2212 "))
-        : fmtSignedTerm(prob.a, first);
-      s += term + "x\u00b3"; first = false;
+        ? (first ? (prob.a.p > 0 ? "" : "-") : (prob.a.p > 0 ? " + " : " - "))
+        : fmtSignedTermLatex(prob.a, first);
+      s += term + "x^3"; first = false;
     }
     if (prob.b.p !== 0) {
       const term = (Math.abs(prob.b.p) === 1 && prob.b.q === 1)
-        ? (first ? (prob.b.p > 0 ? "" : "\u2212") : (prob.b.p > 0 ? " + " : " \u2212 "))
-        : fmtSignedTerm(prob.b, first);
-      s += term + "x\u00b2"; first = false;
+        ? (first ? (prob.b.p > 0 ? "" : "-") : (prob.b.p > 0 ? " + " : " - "))
+        : fmtSignedTermLatex(prob.b, first);
+      s += term + "x^2"; first = false;
     }
     if (prob.c.p !== 0) {
       const term = (Math.abs(prob.c.p) === 1 && prob.c.q === 1)
-        ? (first ? (prob.c.p > 0 ? "" : "\u2212") : (prob.c.p > 0 ? " + " : " \u2212 "))
-        : fmtSignedTerm(prob.c, first);
+        ? (first ? (prob.c.p > 0 ? "" : "-") : (prob.c.p > 0 ? " + " : " - "))
+        : fmtSignedTermLatex(prob.c, first);
       s += term + "x"; first = false;
     }
     if (prob.d.p !== 0 || first) {
-      s += fmtSignedTerm(prob.d, first);
+      s += fmtSignedTermLatex(prob.d, first);
     }
-    return `f(x) = ${s}`;
+    return KT(`f(x) = ${s}`);
   }
 
   function fmtIntervals(prob) {
@@ -683,17 +699,17 @@
     const ivs = increasingDecreasingIntervals(prob);
     function oneInterval(iv) {
       const loOpen = iv.lo === -Infinity, hiOpen = iv.hi === Infinity;
-      const loStr = loOpen ? null : fmtNum(iv.lo);
-      const hiStr = hiOpen ? null : fmtNum(iv.hi);
-      if (loStr === null && hiStr === null) return "x เป็นจำนวนจริงทุกค่า";
-      if (loStr && hiStr) return `${loStr} \u2264 x \u2264 ${hiStr}`;
-      if (loStr) return `x \u2265 ${loStr}`;
-      return `x \u2264 ${hiStr}`;
+      const loStr = loOpen ? null : fmtNumLatex(iv.lo);
+      const hiStr = hiOpen ? null : fmtNumLatex(iv.hi);
+      if (loStr === null && hiStr === null) return KT("x") + " \u0e40\u0e1b\u0e47\u0e19\u0e08\u0e33\u0e19\u0e27\u0e19\u0e08\u0e23\u0e34\u0e07\u0e17\u0e38\u0e01\u0e04\u0e48\u0e32";
+      if (loStr && hiStr) return KT(`${loStr} \\le x \\le ${hiStr}`);
+      if (loStr) return KT(`x \\ge ${loStr}`);
+      return KT(`x \\le ${hiStr}`);
     }
     const inc = ivs.filter(iv => iv.sign === "inc").map(oneInterval);
     const dec = ivs.filter(iv => iv.sign === "dec").map(oneInterval);
-    const incStr = inc.length ? inc.join("  หรือ  ") : "\u2013 (ไม่มีช่วงที่เพิ่มขึ้นเลย)";
-    const decStr = dec.length ? dec.join("  หรือ  ") : "\u2013 (ไม่มีช่วงที่ลดลงเลย)";
+    const incStr = inc.length ? inc.join("&nbsp;&nbsp;\u0e2b\u0e23\u0e37\u0e2d&nbsp;&nbsp;") : "\u2013 (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e0a\u0e48\u0e27\u0e07\u0e17\u0e35\u0e48\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e02\u0e36\u0e49\u0e19\u0e40\u0e25\u0e22)";
+    const decStr = dec.length ? dec.join("&nbsp;&nbsp;\u0e2b\u0e23\u0e37\u0e2d&nbsp;&nbsp;") : "\u2013 (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e0a\u0e48\u0e27\u0e07\u0e17\u0e35\u0e48\u0e25\u0e14\u0e25\u0e07\u0e40\u0e25\u0e22)";
     return { incStr, decStr };
   }
 
@@ -701,31 +717,36 @@
     const maxes = prob.criticalPoints.filter(c => c.type === "max");
     const mins = prob.criticalPoints.filter(c => c.type === "min");
     function block(list, label) {
-      if (!list.length) return `${label}: \u2013 (ไม่มี)`;
-      const pts = list.map(c => `(${fracHTML(c.x)}, ${fracHTML(fEvalFrac(prob, c.x))})`);
+      if (!list.length) return `${label}: \u2013 (\u0e44\u0e21\u0e48\u0e21\u0e35)`;
+      const pts = list.map(c => KT(`(${fracLatex(c.x)},\\ ${fracLatex(fEvalFrac(prob, c.x))})`));
       return `${label}: ${pts.join(", ")}`;
     }
-    return { maxStr: block(maxes, "จุดสูงสุดสัมพัทธ์"), minStr: block(mins, "จุดต่ำสุดสัมพัทธ์") };
+    return { maxStr: block(maxes, "\u0e08\u0e38\u0e14\u0e2a\u0e39\u0e07\u0e2a\u0e38\u0e14\u0e2a\u0e31\u0e21\u0e1e\u0e31\u0e17\u0e18\u0e4c"), minStr: block(mins, "\u0e08\u0e38\u0e14\u0e15\u0e48\u0e33\u0e2a\u0e38\u0e14\u0e2a\u0e31\u0e21\u0e1e\u0e31\u0e17\u0e18\u0e4c") };
   }
 
   function fmtAbsoluteExtrema(prob) {
-    if (prob.absMax) return `มี — เป็นจุดสูงสุดสัมบูรณ์ ที่พิกัด (${fracHTML(prob.absMax.x)}, ${fracHTML(prob.absMax.yFrac)})`;
-    if (prob.absMin) return `มี — เป็นจุดต่ำสุดสัมบูรณ์ ที่พิกัด (${fracHTML(prob.absMin.x)}, ${fracHTML(prob.absMin.yFrac)})`;
-    return "ไม่มี (พหุนามดีกรี" + (prob.isCubic ? "คี่ ไม่มีขอบเขตทั้งสองด้าน)" : "คู่ แต่กรณีนี้ไม่เกิดขึ้น)");
+    if (prob.absMax) return `\u0e21\u0e35 \u2014 \u0e40\u0e1b\u0e47\u0e19\u0e08\u0e38\u0e14\u0e2a\u0e39\u0e07\u0e2a\u0e38\u0e14\u0e2a\u0e31\u0e21\u0e1a\u0e39\u0e23\u0e13\u0e4c \u0e17\u0e35\u0e48\u0e1e\u0e34\u0e01\u0e31\u0e14 ` + KT(`(${fracLatex(prob.absMax.x)},\\ ${fracLatex(prob.absMax.yFrac)})`);
+    if (prob.absMin) return `\u0e21\u0e35 \u2014 \u0e40\u0e1b\u0e47\u0e19\u0e08\u0e38\u0e14\u0e15\u0e48\u0e33\u0e2a\u0e38\u0e14\u0e2a\u0e31\u0e21\u0e1a\u0e39\u0e23\u0e13\u0e4c \u0e17\u0e35\u0e48\u0e1e\u0e34\u0e01\u0e31\u0e14 ` + KT(`(${fracLatex(prob.absMin.x)},\\ ${fracLatex(prob.absMin.yFrac)})`);
+    return "\u0e44\u0e21\u0e48\u0e21\u0e35 (\u0e1e\u0e2b\u0e38\u0e19\u0e32\u0e21\u0e14\u0e35\u0e01\u0e23\u0e35" + (prob.isCubic ? "\u0e04\u0e35\u0e48 \u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e2d\u0e1a\u0e40\u0e02\u0e15\u0e17\u0e31\u0e49\u0e07\u0e2a\u0e2d\u0e07\u0e14\u0e49\u0e32\u0e19)" : "\u0e04\u0e39\u0e48 \u0e41\u0e15\u0e48\u0e01\u0e23\u0e13\u0e35\u0e19\u0e35\u0e49\u0e44\u0e21\u0e48\u0e40\u0e01\u0e34\u0e14\u0e02\u0e36\u0e49\u0e19)");
   }
 
   function fmtInflection(prob) {
-    if (!prob.inflectionPoints.length) return "ไม่มีจุดเปลี่ยนความเว้า (Point of Inflection)";
-    const pts = prob.inflectionPoints.map(x => `(${fracHTML(x)}, ${fracHTML(fEvalFrac(prob, x))})`);
-    return `จุดเปลี่ยนความเว้าอยู่ที่: ${pts.join(", ")}`;
+    if (!prob.inflectionPoints.length) return "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e08\u0e38\u0e14\u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e27\u0e49\u0e32 (Point of Inflection)";
+    const pts = prob.inflectionPoints.map(x => KT(`(${fracLatex(x)},\\ ${fracLatex(fEvalFrac(prob, x))})`));
+    return `\u0e08\u0e38\u0e14\u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e27\u0e49\u0e32\u0e2d\u0e22\u0e39\u0e48\u0e17\u0e35\u0e48: ${pts.join(", ")}`;
   }
 
   function fmtTangent(prob) {
     const t = tangentLineAt(prob, prob.tangentX);
     const slopeFrac = toCleanFraction(t.slope) || F(Math.round(t.slope * 1000), 1000);
     const interceptFrac = toCleanFraction(t.intercept) || F(Math.round(t.intercept * 1000), 1000);
-    const yStr = `y = ${fracHTML(slopeFrac)}x` + (interceptFrac.p !== 0 ? (interceptFrac.p > 0 ? ` + ${fracHTML(interceptFrac)}` : ` \u2212 ${fracHTML(F(Math.abs(interceptFrac.p), interceptFrac.q))}`) : "");
-    return `ที่ x = ${fracHTML(prob.tangentX)}: ความชัน = ${fracHTML(slopeFrac)}, สมการเส้นสัมผัส: ${yStr}`;
+    // the y-intercept term: if it's negative, this is a SUBTRACTION of a signed
+    // quantity from the "slope*x" term — wrap the magnitude in the usual "- N" form
+    // (already parenthesized implicitly by only ever showing its ABSOLUTE value
+    // after an explicit minus sign, never a bare negative literal sitting next to
+    // another sign)
+    const yLatex = `y = ${fracLatex(slopeFrac)}x` + (interceptFrac.p !== 0 ? (interceptFrac.p > 0 ? ` + ${fracLatex(interceptFrac)}` : ` - ${fracLatex(F(Math.abs(interceptFrac.p), interceptFrac.q))}`) : "");
+    return `\u0e17\u0e35\u0e48 ` + KT(`x = ${fracLatex(prob.tangentX)}`) + `: \u0e04\u0e27\u0e32\u0e21\u0e0a\u0e31\u0e19 = ` + KT(fracLatex(slopeFrac)) + `, \u0e2a\u0e21\u0e01\u0e32\u0e23\u0e40\u0e2a\u0e49\u0e19\u0e2a\u0e31\u0e21\u0e1c\u0e31\u0e2a: ` + KT(yLatex);
   }
   /* =========================================================
      8. GRAPH — three stacked plots (f, f', f'') sharing one
@@ -863,6 +884,7 @@
     questionsList.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "วิเคราะห์ฟังก์ชัน แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -871,6 +893,7 @@
     graphBox.innerHTML = buildStackedGraph(current);
     answerCard.innerHTML = buildAnswerCardHTML(current);
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
