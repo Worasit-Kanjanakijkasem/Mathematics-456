@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>สุ่มโจทย์ภาคตัดกรวย</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
+  .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
+  .katex .msupsub { margin-left: 0.08em; }
+</style>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -220,8 +227,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -302,6 +309,10 @@
 
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
   function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function KT(latex) {
+    try { return katex.renderToString(latex, { throwOnError: false }); }
+    catch (e) { return latex; }
+  }
 
   // ---- generate a random conic problem; returns general-form coeffs + type info ----
   function generateProblem() {
@@ -351,29 +362,30 @@
     return { type, A, B, C, D, E, params };
   }
 
-  // ---- format the general-form equation ----
-  function fmtTerm(coeff, varStr, isFirst) {
+  // ---- format the general-form equation (LaTeX) ----
+  function fmtTermLatex(coeff, varStr, isFirst) {
     if (coeff === 0) return "";
-    const sign = coeff < 0 ? "\u2212" : (isFirst ? "" : "+");
+    const sign = coeff < 0 ? "-" : (isFirst ? "" : "+");
     const abs = Math.abs(coeff);
     const coeffStr = (abs === 1 && varStr !== "") ? "" : abs;
     return isFirst ? `${sign}${coeffStr}${varStr}` : ` ${sign} ${coeffStr}${varStr}`;
   }
   function fmtGeneral(A, B, C, D, E) {
-    const terms = [[A, "x\u00b2"], [B, "y\u00b2"], [C, "x"], [D, "y"], [E, ""]];
+    const terms = [[A, "x^2"], [B, "y^2"], [C, "x"], [D, "y"], [E, ""]];
     let out = "";
     let first = true;
     for (const [coeff, v] of terms) {
       if (coeff === 0) continue;
-      out += fmtTerm(coeff, v, first);
+      out += fmtTermLatex(coeff, v, first);
       first = false;
     }
-    return out + " = 0";
+    return KT(out + " = 0");
   }
 
   function signedNum(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `+${n}`; }
+  function signedNumLatex(n) { return n < 0 ? `-${Math.abs(n)}` : `+${n}`; }
   function fmtNum(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
-  function coordStr(h, k) { return `(${fmtNum(h)}, ${fmtNum(k)})`; }
+  function coordStr(h, k) { return KT(`(${fmtNum(h)},\\ ${fmtNum(k)})`); }
   function fracHTML(num, den) {
     return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`;
   }
@@ -579,43 +591,45 @@
 
     if (type === "circle") {
       typeName = "วงกลม (Circle)";
-      stdEq = `(x${signedNum(-h)})\u00b2 + (y${signedNum(-k)})\u00b2 = ${params.r}\u00b2`;
+      stdEq = KT(`(x${signedNumLatex(-h)})^2 + (y${signedNumLatex(-k)})^2 = ${params.r}^2`);
       posLabel = "จุดศูนย์กลาง";
       posVal = coordStr(h, k);
-      extraRows.push(`รัศมี r = ${params.r}`);
+      extraRows.push(KT(`\\text{รัศมี } r = ${params.r}`));
     } else if (type === "parabola") {
       typeName = "พาราโบลา (Parabola)";
+      const coefLatex = signedNumLatex(4 * params.c).replace(/^\+/, "");
       if (params.axis === "x") {
-        stdEq = `(y${signedNum(-k)})\u00b2 = ${signedNum(4 * params.c).replace("+", "")}(x${signedNum(-h)})`;
+        stdEq = KT(`(y${signedNumLatex(-k)})^2 = ${coefLatex}(x${signedNumLatex(-h)})`);
       } else {
-        stdEq = `(x${signedNum(-h)})\u00b2 = ${signedNum(4 * params.c).replace("+", "")}(y${signedNum(-k)})`;
+        stdEq = KT(`(x${signedNumLatex(-h)})^2 = ${coefLatex}(y${signedNumLatex(-k)})`);
       }
       posLabel = "จุดยอด";
       posVal = coordStr(h, k);
-      extraRows.push(`c = ${params.c} (ระยะโฟกัสจากจุดยอด)`);
+      extraRows.push(KT(`c = ${params.c} \\;(\\text{ระยะโฟกัสจากจุดยอด})`));
       extraRows.push(`แกนสมมาตรขนานแกน ${params.axis} (เปิดไปทาง${params.c > 0 ? (params.axis === "x" ? "ขวา" : "บน") : (params.axis === "x" ? "ซ้าย" : "ล่าง")})`);
     } else if (type === "ellipse") {
       typeName = "วงรี (Ellipse)";
       if (params.axis === "x") {
-        stdEq = `${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.a}\u00b2`)} + ${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.b}\u00b2`)} = 1`;
+        stdEq = KT(`\\dfrac{(x${signedNumLatex(-h)})^2}{${params.a}^2} + \\dfrac{(y${signedNumLatex(-k)})^2}{${params.b}^2} = 1`);
       } else {
-        stdEq = `${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.b}\u00b2`)} + ${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.a}\u00b2`)} = 1`;
+        stdEq = KT(`\\dfrac{(x${signedNumLatex(-h)})^2}{${params.b}^2} + \\dfrac{(y${signedNumLatex(-k)})^2}{${params.a}^2} = 1`);
       }
       posLabel = "จุดศูนย์กลาง";
       posVal = coordStr(h, k);
-      extraRows.push(`a = ${params.a} (ครึ่งแกนเอก)     b = ${params.b} (ครึ่งแกนโท)`);
+      extraRows.push(KT(`a = ${params.a} \\;(\\text{ครึ่งแกนเอก}) \\qquad b = ${params.b} \\;(\\text{ครึ่งแกนโท})`));
       extraRows.push(`แกนเอกขนานแกน ${params.axis}`);
     } else {
       typeName = "ไฮเพอร์โบลา (Hyperbola)";
       if (params.axis === "x") {
-        stdEq = `${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.a}\u00b2`)} \u2212 ${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.b}\u00b2`)} = 1`;
+        stdEq = KT(`\\dfrac{(x${signedNumLatex(-h)})^2}{${params.a}^2} - \\dfrac{(y${signedNumLatex(-k)})^2}{${params.b}^2} = 1`);
       } else {
-        stdEq = `${fracHTML(`(y${signedNum(-k)})\u00b2`, `${params.a}\u00b2`)} \u2212 ${fracHTML(`(x${signedNum(-h)})\u00b2`, `${params.b}\u00b2`)} = 1`;
+        stdEq = KT(`\\dfrac{(y${signedNumLatex(-k)})^2}{${params.a}^2} - \\dfrac{(x${signedNumLatex(-h)})^2}{${params.b}^2} = 1`);
       }
       posLabel = "จุดศูนย์กลาง";
       posVal = coordStr(h, k);
-      extraRows.push(`a = ${params.a}, b = ${params.b}`);
-      extraRows.push(`แกนตามขวางขนานแกน ${params.axis}     เส้นกำกับ: y = \u00b1(${params.axis === "x" ? `${params.b}/${params.a}` : `${params.a}/${params.b}`})x (สัมพัทธ์กับศูนย์กลาง)`);
+      extraRows.push(KT(`a = ${params.a},\\ b = ${params.b}`));
+      const asymLatex = params.axis === "x" ? `\\dfrac{${params.b}}{${params.a}}` : `\\dfrac{${params.a}}{${params.b}}`;
+      extraRows.push(`แกนตามขวางขนานแกน ${params.axis}` + `&nbsp;&nbsp;` + KT(`\\text{เส้นกำกับ:}\\; y = \\pm${asymLatex}x`) + ` (สัมพัทธ์กับศูนย์กลาง)`);
     }
 
     let html = `<div class="answer-row"><b>ชนิด:</b> ${typeName}</div>`;
@@ -643,6 +657,7 @@
     exprEl.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "บอกชนิด จัดเป็นรูปแบบมาตรฐาน แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -650,13 +665,14 @@
     graphBox.innerHTML = buildConicGraph(current);
     answerCard.innerHTML = buildAnswer(current);
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
 
   function showNext() {
     exprEl.classList.add("swap"); answerWrap.classList.add("swap");
     setTimeout(() => {
       current = generateProblem();
-      exprEl.textContent = fmtGeneral(current.A, current.B, current.C, current.D, current.E);
+      exprEl.innerHTML = fmtGeneral(current.A, current.B, current.C, current.D, current.E);
       showingAnswer = false;
       displayProblem();
       exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
