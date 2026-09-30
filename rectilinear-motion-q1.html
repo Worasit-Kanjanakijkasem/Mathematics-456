@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>โจทย์ Rectilinear Motion - ข้อ 1</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  /* KaTeX font override: Times New Roman for math variables, smaller/better-spaced
+     exponents — same fix already verified working in the twin-radical-equation tool */
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
+  .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
+  .katex .msupsub { margin-left: 0.08em; }
+</style>
 <style>
 
   /* =========================================================
@@ -303,6 +312,13 @@
     if (Object.is(r, -0)) r = 0;
     return r.toFixed(2);
   }
+  // wrap in parentheses when negative, for use as the SECOND operand of a visible
+  // subtraction (e.g. "375.56 - (-19.94)") so it never reads as a confusing double
+  // minus sign "375.56 - -19.94"
+  function fmt2Paren(x) {
+    const s = fmt2(x);
+    return x < 0 ? `(${s})` : s;
+  }
   // format a "clean" time value (quarters/halves) without forcing trailing zeros
   function fmtT(x) {
     let r = Math.round(x * 100) / 100;
@@ -310,11 +326,18 @@
   }
 
   /* =========================================================
-     2. POLYNOMIAL DISPLAY
-     term = { n, d, label }  (label = "t<sup>3</sup>", "t<sup>2</sup>", "t", "")
+     2. POLYNOMIAL DISPLAY — builds a LaTeX string then renders
+     via KaTeX (replaces the old HTML+<sup> approach entirely,
+     same upgrade already verified in the twin-radical-equation
+     tool: proper math typesetting instead of hand-built HTML)
+     term = { n, d, label }  (label = "t^3", "t^2", "t", "")
      ========================================================= */
-  function polyHTML(terms) {
-    let html = "";
+  function KT(latex) {
+    try { return katex.renderToString(latex, { throwOnError: false }); }
+    catch (e) { return latex; }
+  }
+  function polyLatex(terms) {
+    let s = "";
     let first = true;
     terms.forEach(term => {
       if (term.n === 0) return;
@@ -322,20 +345,92 @@
       const neg = f.n < 0;
       const absN = Math.abs(f.n);
       const isUnit = (absN === f.d) && term.label !== "";
-      let magHTML;
+      let magLatex;
       if (f.d === 1) {
-        magHTML = isUnit ? "" : String(absN);
+        magLatex = isUnit ? "" : String(absN);
       } else {
-        magHTML = `<span class="frac"><span class="num">${absN}</span><span class="den">${f.d}</span></span>`;
+        magLatex = `\\frac{${absN}}{${f.d}}`;
       }
       if (first) {
-        html += (neg ? "\u2212" : "") + magHTML + term.label;
+        s += (neg ? "-" : "") + magLatex + term.label;
         first = false;
       } else {
-        html += ` ${neg ? "\u2212" : "+"} ${magHTML}${term.label}`;
+        s += ` ${neg ? "-" : "+"} ${magLatex}${term.label}`;
       }
     });
-    return html === "" ? "0" : html;
+    return s === "" ? "0" : s;
+  }
+  function polyKT(terms) { return KT(polyLatex(terms)); }
+
+  /* =========================================================
+     2b. TRIPLE GRAPH (s-t, v-t, a-t) — shared time axis, with
+     dashed vertical reference lines at v=0 and a=0 (drawn at the
+     SAME x-position in each stacked panel using the same scale,
+     so they visually line up across all three graphs)
+     ========================================================= */
+  const GOLD = "#F9E795", MUTED = "#B9C0E0", GRID = "#5A6296";
+  function buildTripleGraph(p) {
+    const W = 600, H = 128, padL = 42, padR = 14, padT = 16, padB = 22;
+    const tMin = 0, tMax = p.t5;
+
+    const vZeros = p.rootsInRange; // already filtered to [0, t5] by generateProblem()
+    const accADecimal = fracDecimal(simplifyFrac(p.accTerms[0].n, p.accTerms[0].d));
+    let aZero = null;
+    if (Math.abs(accADecimal) > 1e-12) {
+      const t0 = -(p.accTerms[1].n / p.accTerms[1].d) / accADecimal;
+      if (t0 >= -1e-9 && t0 <= tMax + 1e-9) aZero = Math.max(0, t0);
+    }
+    const vMarkers = vZeros;
+    const aMarkers = aZero !== null ? [aZero] : [];
+
+    function toX(t) { return padL + (t - tMin) / (tMax - tMin) * (W - padL - padR); }
+
+    function buildPanel(fn, label) {
+      const N = 60;
+      const pts = [];
+      for (let i = 0; i <= N; i++) {
+        const t = tMin + (tMax - tMin) * i / N;
+        pts.push([t, fn(t)]);
+      }
+      let yMin = Math.min(...pts.map(pt => pt[1]), 0);
+      let yMax = Math.max(...pts.map(pt => pt[1]), 0);
+      if (yMin === yMax) { yMin -= 1; yMax += 1; }
+      const yPad = (yMax - yMin) * 0.15 || 1;
+      yMin -= yPad; yMax += yPad;
+
+      function toY(v) { return H - padB - (v - yMin) / (yMax - yMin) * (H - padT - padB); }
+
+      let d = "";
+      pts.forEach(([t, v], i) => { d += (i === 0 ? "M" : "L") + toX(t).toFixed(1) + "," + toY(v).toFixed(1) + " "; });
+
+      let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; display:block;">`;
+      svg += `<line x1="${padL}" y1="${toY(0).toFixed(1)}" x2="${W - padR}" y2="${toY(0).toFixed(1)}" stroke="${GRID}" stroke-width="1"/>`;
+      svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="${GRID}" stroke-width="1"/>`;
+      vMarkers.forEach(t => {
+        const x = toX(t).toFixed(1);
+        svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H - padB}" stroke="${GOLD}" stroke-width="1.3" stroke-dasharray="4 3"/>`;
+      });
+      aMarkers.forEach(t => {
+        const x = toX(t).toFixed(1);
+        svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H - padB}" stroke="${p.coral || '#F96167'}" stroke-width="1.3" stroke-dasharray="2 3"/>`;
+      });
+      svg += `<path d="${d}" fill="none" stroke="white" stroke-width="2"/>`;
+      svg += `<text x="${padL}" y="12" font-size="11" fill="${GOLD}" font-weight="700" font-family="Cambria, Georgia, serif">${label}</text>`;
+      svg += `<text x="${padL}" y="${H - 5}" font-size="9" fill="${MUTED}">0</text>`;
+      svg += `<text x="${W - padR}" y="${H - 5}" font-size="9" fill="${MUTED}" text-anchor="end">${fmtT(tMax)}</text>`;
+      svg += `</svg>`;
+      return svg;
+    }
+
+    let html = `<div style="background:rgba(255,255,255,0.04); border-radius:10px; padding:10px 10px 4px; margin-bottom:14px;">`;
+    html += buildPanel(p.evalS, "s(t)  [m]");
+    html += buildPanel(p.evalV, "v(t)  [m/s]");
+    html += buildPanel(p.evalAcc, "a(t)  [m/s\u00b2]");
+    html += `<div style="font-size:11px; color:${MUTED}; text-align:center; margin-top:2px;">`;
+    html += `<span style="color:${GOLD};">- - -</span> v(t)=0`;
+    if (aMarkers.length) html += `&nbsp;&nbsp; <span style="color:#F96167;">- - -</span> a(t)=0`;
+    html += `</div></div>`;
+    return html;
   }
 
   /* =========================================================
@@ -383,8 +478,8 @@
 
     // s(t) terms
     const sTerms = [
-      { n: a.n, d: a.d, label: "t<sup>3</sup>" },
-      { n: b, d: 1, label: "t<sup>2</sup>" },
+      { n: a.n, d: a.d, label: "t^3" },
+      { n: b, d: 1, label: "t^2" },
       { n: c, d: 1, label: "t" },
       { n: d, d: 1, label: "" }
     ];
@@ -392,7 +487,7 @@
     // v(t) = 3a t^2 + 2b t + c
     const vA = simplifyFrac(3 * a.n, a.d);
     const vTerms = [
-      { n: vA.n, d: vA.d, label: "t<sup>2</sup>" },
+      { n: vA.n, d: vA.d, label: "t^2" },
       { n: 2 * b, d: 1, label: "t" },
       { n: c, d: 1, label: "" }
     ];
@@ -437,7 +532,7 @@
      ========================================================= */
   function renderProblem(p) {
     problemCard.innerHTML = `
-      <div class="eqn">s(t) = ${polyHTML(p.sTerms)} &nbsp; (m), &nbsp; t (s)</div>
+      <div class="eqn">${KT(`s(t) = ${polyLatex(p.sTerms)}`)} &nbsp; (m), &nbsp; ${KT("t")} (s)</div>
       <ol class="qlist">
         <li>ที่เวลา t = ${fmtT(p.t1)} s อนุภาคมีความเร็วเท่าใด</li>
         <li>ที่เวลา t = ${fmtT(p.t2)} s อนุภาคมีความเร่งเท่าใด</li>
@@ -455,9 +550,9 @@
     const disp = s4 - s3;
 
     let q4Lines = "";
-    q4Lines += `<div class="sol-line">v(t) = 0 &nbsp;\u21d2&nbsp; ${polyHTML(p.vTerms)} = 0</div>`;
+    q4Lines += `<div class="sol-line">${KT(`v(t) = 0 \\;\\Rightarrow\\; ${polyLatex(p.vTerms)} = 0`)}</div>`;
     q4Lines += `<div class="sol-line">A = ${fmt2(p.A)}, &nbsp; B = ${fmt2(p.B)}, &nbsp; C = ${fmt2(p.C)}</div>`;
-    q4Lines += `<div class="sol-line">D = B<sup>2</sup> \u2212 4AC = ${fmt2(p.D)}</div>`;
+    q4Lines += `<div class="sol-line">${KT(`D = B^2 - 4AC = ${fmt2(p.D)}`)}</div>`;
 
     if (p.D < -1e-9) {
       q4Lines += `<div class="conclusion">D &lt; 0 \u21d2 สมการไม่มีคำตอบจริง \u21d2 <span class="answer-final">ความเร็วไม่เปลี่ยนเครื่องหมายในช่วงนี้ ⇒ ไม่มีการกลับทิศ</span></div>`;
@@ -474,23 +569,26 @@
 
     solutionCard.innerHTML = `
       <div class="sol-title">อนุพันธ์อันดับ 1 (ความเร็ว)</div>
-      <div class="sol-line">v(t) = ds/dt = 3a t<sup>2</sup> + 2b t + c = ${polyHTML(p.vTerms)} &nbsp; (m/s)</div>
+      <div class="sol-line">${KT(`v(t) = \\dfrac{ds}{dt} = 3at^2+2bt+c = ${polyLatex(p.vTerms)}`)} &nbsp; (m/s)</div>
 
       <div class="sol-title">อนุพันธ์อันดับ 2 (ความเร่ง)</div>
-      <div class="sol-line">a(t) = dv/dt = 6a t + 2b = ${polyHTML(p.accTerms)} &nbsp; (m/s<sup>2</sup>)</div>
+      <div class="sol-line">${KT(`a(t) = \\dfrac{dv}{dt} = 6at+2b = ${polyLatex(p.accTerms)}`)} &nbsp; (m/s\u00b2)</div>
+
+      <div class="sol-title">กราฟ s(t), v(t), a(t) (แกนเวลาเดียวกัน)</div>
+      ${buildTripleGraph(p)}
 
       <div class="sol-title">ข้อ 1: ความเร็วที่ t = ${fmtT(p.t1)} s</div>
-      <div class="sol-line">v(${fmtT(p.t1)}) = ${polyHTML(p.vTerms)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t1)}</div>
+      <div class="sol-line">${KT(`v(${fmtT(p.t1)}) = ${polyLatex(p.vTerms)}`)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t1)}</div>
       <div class="sol-line">v(${fmtT(p.t1)}) = <span class="answer-final">${fmt2(v1)} m/s</span></div>
 
       <div class="sol-title">ข้อ 2: ความเร่งที่ t = ${fmtT(p.t2)} s</div>
-      <div class="sol-line">a(${fmtT(p.t2)}) = ${polyHTML(p.accTerms)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t2)}</div>
-      <div class="sol-line">a(${fmtT(p.t2)}) = <span class="answer-final">${fmt2(a2)} m/s<sup>2</sup></span></div>
+      <div class="sol-line">${KT(`a(${fmtT(p.t2)}) = ${polyLatex(p.accTerms)}`)} &nbsp;\u2192&nbsp; แทนค่า t = ${fmtT(p.t2)}</div>
+      <div class="sol-line">a(${fmtT(p.t2)}) = <span class="answer-final">${fmt2(a2)} m/s\u00b2</span></div>
 
       <div class="sol-title">ข้อ 3: การกระจัดจาก t = ${fmtT(p.t3)} s ถึง t = ${fmtT(p.t4)} s</div>
       <div class="sol-line">s(${fmtT(p.t4)}) = ${fmt2(s4)} m</div>
       <div class="sol-line">s(${fmtT(p.t3)}) = ${fmt2(s3)} m</div>
-      <div class="sol-line">\u0394s = s(${fmtT(p.t4)}) \u2212 s(${fmtT(p.t3)}) = ${fmt2(s4)} \u2212 ${fmt2(s3)} = <span class="answer-final">${fmt2(disp)} m</span></div>
+      <div class="sol-line">\u0394s = s(${fmtT(p.t4)}) \u2212 s(${fmtT(p.t3)}) = ${fmt2(s4)} \u2212 ${fmt2Paren(s3)} = <span class="answer-final">${fmt2(disp)} m</span></div>
 
       <div class="sol-title">ข้อ 4: การกลับทิศในช่วง 0 ถึง ${fmtT(p.t5)} s</div>
       ${q4Lines}
