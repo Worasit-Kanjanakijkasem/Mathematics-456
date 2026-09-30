@@ -534,7 +534,9 @@
     } else if (Math.abs(D) <= EPS) {
       roots = [-B / (2 * A)];
     }
-    const rootsInRange = roots.filter(r => r >= -EPS && r <= t5 + EPS).map(r => Math.max(0, r));
+    const rootsInRange = Math.abs(D) <= EPS
+      ? []
+      : roots.filter(r => r >= -EPS && r <= t5 + EPS).map(r => Math.max(0, r));
 
     return {
       a, b, c, d, t1, t2, t3, t4, t5,
@@ -576,7 +578,9 @@
     } else {
       const rootsStr = p.roots.map(r => `${fmt2(r)}\\,\\mathrm{s}`).join(",\\; ");
       q4Lines += `<div class="sol-line">${KT(`t = ${rootsStr}`)}</div>`;
-      if (p.rootsInRange.length === 0) {
+      if (Math.abs(p.D) <= 1e-9) {
+        q4Lines += `<div class="conclusion">${KT(`D = 0`)} ⇒ เป็นรากซ้ำ ⇒ ความเร็วเป็นศูนย์ชั่วขณะ แต่ไม่เปลี่ยนเครื่องหมาย ⇒ <span class="answer-final">ไม่มีการกลับทิศ</span></div>`;
+      } else if (p.rootsInRange.length === 0) {
         q4Lines += `<div class="conclusion">ไม่มีรากใดอยู่ในช่วง [0, ${fmtT(p.t5)}] \u21d2 <span class="answer-final">ไม่มีการกลับทิศในช่วงที่กำหนด</span></div>`;
       } else {
         const inRangeStr = p.rootsInRange.map(r => `${fmt2(r)}\\,\\mathrm{s}`).join(",\\; ");
