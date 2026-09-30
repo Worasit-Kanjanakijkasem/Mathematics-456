@@ -10,6 +10,16 @@
   .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
   .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
   .katex .msupsub { margin-left: 0.08em; }
+
+  /* Shared mathematics typography fallback for non-KaTeX text */
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+  .math-unit {
+    font-family: "Times New Roman", Times, serif;
+    font-style: normal;
+  }
 </style>
 <style>
   :root {
@@ -97,14 +107,6 @@
   .answer-row { margin-bottom: 9px; font-size: clamp(13px, 2vw, 16px); line-height: 1.55; }
   .answer-row:last-child { margin-bottom: 0; }
   .answer-row b { color: var(--gold); }
-  .frac {
-    display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle;
-    margin: 0 0.1em; line-height: 1.05;
-  }
-  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
-  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.04em; }
-  .frac .den { padding-top: 0.04em; }
-
   .prompt { margin-top: 18px; font-size: clamp(14px, 2vw, 20px); color: var(--muted); text-align: center; }
 
   .controls {
@@ -393,8 +395,8 @@
     return `
       <div class="answer-row"><b>1. Amplitude:</b> ${KT("|a|")} = ${amp}</div>
       <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>Period:</b> ${periodStr}</div>
-      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เฟสชิฟต์ (h):</b> ${phaseStr}</div>
-      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เลื่อนแนวตั้ง (k):</b> ${fmtNumSigned(prob.k)}</div>
+      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เฟสชิฟต์ (<span class="math-var">h</span>):</b> ${phaseStr}</div>
+      <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เลื่อนแนวตั้ง (<span class="math-var">k</span>):</b> ${fmtNumSigned(prob.k)}</div>
       <div class="answer-row"><b>2. เส้นกึ่งกลาง (Midline):</b> ${KT(`y = ${prob.k < 0 ? "-" + Math.abs(prob.k) : prob.k}`)}</div>
       <div class="answer-row"><b>3. กราฟ:</b> ดูรูปด้านบน (เส้นประคือเส้นกึ่งกลาง)</div>
     `;
@@ -435,6 +437,20 @@
     return frac.q === 1 ? `${sign}${coeffStr}\u03c0` : `${sign}${coeffStr}\u03c0/${frac.q}`;
   }
 
+
+  function svgMathLabel(text) {
+    const esc = (s) => s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const tokens = text.match(/sin|cos|[A-Za-zπ]+|[^A-Za-zπ]+/g) || [text];
+    return tokens.map(tok => {
+      const isFunctionName = /^(?:sin|cos)$/.test(tok);
+      const isMathVariable = /^[A-Za-zπ]+$/.test(tok) && !isFunctionName;
+      return `<tspan font-family="Times New Roman, Times, serif" font-style="${isMathVariable ? "italic" : "normal"}">${esc(tok)}</tspan>`;
+    }).join("");
+  }
+
   function buildGraph(prob) {
     const W = 460, H = 320, padL = 34, padR = 14, padT = 34, padB = 28;
     const xLo = -2 * Math.PI, xHi = 2 * Math.PI;
@@ -451,7 +467,7 @@
     let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
 
     // equation label (factored form) at the top
-    svg += `<text x="${W / 2}" y="18" font-size="15" fill="${MID_COLOR}" font-weight="700" text-anchor="middle" font-family="Cambria, Georgia, serif">${fmtFactoredFormPlain(prob)}</text>`;
+    svg += `<text x="${W / 2}" y="18" font-size="15" fill="${MID_COLOR}" font-weight="700" text-anchor="middle">${svgMathLabel(fmtFactoredFormPlain(prob))}</text>`;
 
     // x-axis (y=0, if in view) and y-axis (x=0)
     if (yLo < 0 && yHi > 0) svg += `<line x1="${toPx(xLo)}" y1="${toPy(0)}" x2="${toPx(xHi)}" y2="${toPy(0)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
@@ -465,7 +481,7 @@
       svg += `<line x1="${px.toFixed(1)}" y1="${(toPy(0) - 3).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(toPy(0) + 3).toFixed(1)}" stroke="${AXIS_COLOR}" stroke-width="1"/>`;
       if (m % 2 === 0 && m !== 0) {
         const label = m === 0 ? "0" : (m / 2 === 1 ? "\u03c0" : m / 2 === -1 ? "\u2212\u03c0" : `${m / 2}\u03c0`);
-        svg += `<text x="${px.toFixed(1)}" y="${(toPy(0) + 16).toFixed(1)}" font-size="11" fill="${AXIS_COLOR}" text-anchor="middle" font-family="Calibri, sans-serif">${label}</text>`;
+        svg += `<text x="${px.toFixed(1)}" y="${(toPy(0) + 16).toFixed(1)}" font-size="11" fill="${AXIS_COLOR}" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="italic">${label}</text>`;
       }
     }
 
@@ -477,7 +493,7 @@
     const curveNearRight = Math.abs(evalFn(prob, xHi - 0.3) - prob.k) < amp * 0.35;
     const midLabelX = curveNearRight ? toPx(xLo) + 4 : toPx(xHi) - 4;
     const midLabelAnchor = curveNearRight ? "start" : "end";
-    svg += `<text x="${midLabelX.toFixed(1)}" y="${(toPy(prob.k) - 6).toFixed(1)}" font-size="12" fill="${MID_COLOR}" font-weight="700" text-anchor="${midLabelAnchor}" font-family="Calibri, sans-serif">y = ${fmtNumSignedPlain(prob.k)}</text>`;
+    svg += `<text x="${midLabelX.toFixed(1)}" y="${(toPy(prob.k) - 6).toFixed(1)}" font-size="12" fill="${MID_COLOR}" font-weight="700" text-anchor="${midLabelAnchor}"><tspan font-family="Times New Roman, Times, serif" font-style="italic">y</tspan><tspan font-family="Times New Roman, Times, serif" font-style="normal"> = ${fmtNumSignedPlain(prob.k)}</tspan></text>`;
 
     // curve
     const steps = 200;
