@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>อสมการค่าสัมบูรณ์ (มัธยมปลาย)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -29,6 +31,15 @@
     user-select: none;
     position: relative;
   }
+  /* Mathematics typography */
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit {
+    font-family: "Times New Roman", Times, serif !important;
+  }
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+
   .blob { position: absolute; border-radius: 50%; pointer-events: none; }
   .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
   .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
@@ -45,7 +56,7 @@
   }
 
   .expr {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(18px, 3.4vw, 28px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(18px, 3.4vw, 28px); font-weight: 700;
     text-align: center; line-height: 1.6; max-width: 95vw; transition: opacity 0.15s ease, transform 0.15s ease;
   }
   .expr.swap { opacity: 0; transform: scale(0.94); }
@@ -71,11 +82,11 @@
 
   .section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
   .factored-line {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
     text-align: center; color: var(--gold); margin-top: 10px; line-height: 1.6;
   }
   .solution-line {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(16px, 2.6vw, 22px); font-weight: 700;
     text-align: center; color: var(--gold); margin-top: 12px;
   }
 
@@ -166,8 +177,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -181,7 +192,7 @@
     <div class="settings-panel">
       <h2>ตั้งค่าการสุ่มโจทย์</h2>
       <div class="desc">เลือกประเภทโจทย์ที่ต้องการฝึก (เปิดได้มากกว่า 1 แบบ)</div>
-      <div class="toggle-row"><span>1. ผลบวก y = y₁ + y₂</span><label class="switch"><input type="checkbox" id="enableSum" checked><span class="slider-track"></span></label></div>
+      <div class="toggle-row"><span>1. ผลบวก <span class="math-var">y</span> = <span class="math-var">y</span>₁ + <span class="math-var">y</span>₂</span><label class="switch"><input type="checkbox" id="enableSum" checked><span class="slider-track"></span></label></div>
       <div class="toggle-row"><span>2. ค่าสัมบูรณ์ซ้อน</span><label class="switch"><input type="checkbox" id="enableNested" checked><span class="slider-track"></span></label></div>
       <div class="settings-error" id="settingsError"></div>
       <div class="settings-actions">
@@ -192,6 +203,49 @@
   </div>
 
 <script>
+  function KT(tex) {
+    return katex.renderToString(tex, { throwOnError: false });
+  }
+
+  function plainMathToLatex(s) {
+    return s
+      .replace(/−/g, "-")
+      .replace(/≥/g, "\\ge ")
+      .replace(/≤/g, "\\le ")
+      .replace(/∞/g, "\\infty ")
+      .replace(/∪/g, "\\cup ")
+      .replace(/∈/g, "\\in ");
+  }
+
+  function fracToLatex(fr) {
+    if (fr.q === 1) return `${fr.p}`;
+    return fr.p < 0
+      ? `-\\frac{${Math.abs(fr.p)}}{${fr.q}}`
+      : `\\frac{${fr.p}}{${fr.q}}`;
+  }
+
+  function rootToLatex(r) {
+    return fracToLatex(r);
+  }
+
+  function intervalBoundLatex(v) {
+    if (v === -Infinity) return "-\\infty";
+    if (v === Infinity) return "\\infty";
+    if (Number.isInteger(v)) return `${v}`;
+    return fracToLatex(reduceFrac(Math.round(v * 60), 60));
+  }
+
+  function solutionSetLatex(sol) {
+    const parts = [];
+    for (const iv of sol.intervals) {
+      const lb = iv.lo === -Infinity ? "(" : (iv.closedLo ? "[" : "(");
+      const rb = iv.hi === Infinity ? ")" : (iv.closedHi ? "]" : ")");
+      parts.push(`${lb}${intervalBoundLatex(iv.lo)},\\,${intervalBoundLatex(iv.hi)}${rb}`);
+    }
+    for (const iso of sol.isolated) parts.push(`\\{${rootToLatex(iso)}\\}`);
+    return parts.length ? parts.join(" \\cup ") : "\\varnothing";
+  }
+
   /* =========================================================
      1. CONFIG / UTILITIES
      ========================================================= */
@@ -392,7 +446,7 @@
   function fmtLinInside(B, x, C) {
     const bPart = `${fmtCoeff(B)}${x}`;
     if (C === 0) return bPart;
-    return C > 0 ? `${bPart} + ${C}` : `${bPart} \u2212 ${Math.abs(C)}`;
+    return C > 0 ? `${bPart} + ${C}` : `${bPart} - ${Math.abs(C)}`;
   }
 
   /* =========================================================
@@ -403,8 +457,8 @@
      the nested type's variable segment count (1 or 3 kinks).
      ========================================================= */
   function fmtLineEq(slope, intercept) {
-    const xPart = slope === 1 ? "x" : slope === -1 ? "\u2212x" : `${fmtSigned(slope)}x`;
-    const iPart = intercept === 0 ? "" : (intercept > 0 ? ` + ${intercept}` : ` \u2212 ${Math.abs(intercept)}`);
+    const xPart = slope === 1 ? "x" : slope === -1 ? "-x" : `${slope}x`;
+    const iPart = intercept === 0 ? "" : (intercept > 0 ? ` + ${intercept}` : ` - ${Math.abs(intercept)}`);
     return `y = ${slope === 0 ? (intercept === 0 ? "0" : fmtSigned(intercept)) : xPart + iPart}`;
   }
   function buildSegmentsSum(prob) {
@@ -452,7 +506,7 @@
       if (lo === null) cond = `x &lt; ${hb}`;
       else if (hi === null) cond = `x &gt; ${lb}`;
       else cond = `${lb} \u2264 x \u2264 ${hb}`;
-      return `<div class="answer-row">&nbsp;&nbsp;&nbsp;${cond}: &nbsp;${fmtLineEq(s.slope, s.intercept)}</div>`;
+      return `<div class="answer-row">&nbsp;&nbsp;&nbsp;${KT(plainMathToLatex(cond.replace(/&lt;/g, "<").replace(/&gt;/g, ">")))}: &nbsp;${KT(fmtLineEq(s.slope, s.intercept))}</div>`;
     }).join("");
   }
   function fmtHiddenProblem(prob) {
@@ -469,8 +523,7 @@
       const hStr = prob.h1 === 0 ? "x" : (prob.h1 > 0 ? `x \u2212 ${prob.h1}` : `x + ${Math.abs(prob.h1)}`);
       const innerAbs = `${fmtCoeff(M)}|${hStr}|`;
       const withC = prob.C === 0 ? innerAbs : (prob.C > 0 ? `${innerAbs} + ${prob.C}` : `${innerAbs} \u2212 ${Math.abs(prob.C)}`);
-      const OB = '<span class="outer-bar">|</span>';
-      const outer = `${fmtCoeff(prob.A)}${OB}${withC}${OB}`;
+      const outer = `${fmtCoeff(prob.A)}\\big|${withC}\\big|`;
       const dStr = prob.hiddenD === 0 ? "" : (prob.hiddenD > 0 ? ` + ${prob.hiddenD}` : ` \u2212 ${Math.abs(prob.hiddenD)}`);
       return `${outer}${dStr} ${fmtIneqSymbol(prob.ineq)} ${fmtSigned(prob.d)}`;
     }
@@ -490,7 +543,7 @@
     } else {
       const inner = fmtStandardAbs(prob.B * prob.a1, prob.h1);
       const withC = prob.C === 0 ? inner : (prob.C > 0 ? `${inner} + ${prob.C}` : `${inner} \u2212 ${Math.abs(prob.C)}`);
-      const outer = `${fmtCoeff(prob.A)}|${withC}|`;
+      const outer = `${fmtCoeff(prob.A)}\\big|${withC}\\big|`;
       const dStr = prob.D === 0 ? "" : (prob.D > 0 ? ` + ${prob.D}` : ` \u2212 ${Math.abs(prob.D)}`);
       return `${outer}${dStr} ${fmtIneqSymbol(prob.ineq)} 0`;
     }
@@ -563,13 +616,13 @@
     for (const r of uniq) {
       lInner += `<line x1="${toPx(r).toFixed(1)}" y1="${(HLine/2-6).toFixed(1)}" x2="${toPx(r).toFixed(1)}" y2="${(HLine/2+6).toFixed(1)}" stroke="${GOLD}" stroke-width="2"/>`;
       const rootObj = roots.find(rt => Math.abs(rt.p / rt.q - r) < 1e-9);
-      lInner += `<text x="${toPx(r).toFixed(1)}" y="${(HLine/2+20).toFixed(1)}" font-size="10" fill="${GOLD}" text-anchor="middle" font-family="Calibri, sans-serif">${rootObj.q === 1 ? r : rootObj.p + "/" + rootObj.q}</text>`;
+      lInner += `<text x="${toPx(r).toFixed(1)}" y="${(HLine/2+20).toFixed(1)}" font-size="10" fill="${GOLD}" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${rootObj.q === 1 ? r : rootObj.p + "/" + rootObj.q}</text>`;
     }
     const bounds = [xLo, ...uniq, xHi];
     for (let i = 0; i < bounds.length - 1; i++) {
       const mid = (bounds[i] + bounds[i + 1]) / 2;
       const s = signAt(prob, mid);
-      lInner += `<text x="${toPx(mid).toFixed(1)}" y="${(HLine/2-10).toFixed(1)}" font-size="13" fill="${s>0?"#8FD3F4":"#F96167"}" font-weight="700" text-anchor="middle" font-family="Calibri, sans-serif">${s>0?"+":"\u2212"}</text>`;
+      lInner += `<text x="${toPx(mid).toFixed(1)}" y="${(HLine/2-10).toFixed(1)}" font-size="13" fill="${s>0?"#8FD3F4":"#F96167"}" font-weight="700" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${s>0?"+":"\u2212"}</text>`;
     }
     svg += `<g transform="translate(0,${HGraph + gap})">${lInner}</g>`;
 
@@ -614,22 +667,22 @@
     if (prob.type === "sum") {
       structureHTML = `
         <div class="answer-row"><b>1. จัดรูปให้ด้านขวาเป็น 0</b> (ลบ ${fmtSigned(prob.d)} ทั้งสองข้าง):</div>
-        <div class="answer-row" style="text-align:center;">${fmtFactoredDisplay(prob)}</div>
+        <div class="answer-row" style="text-align:center;">${KT(plainMathToLatex(fmtFactoredDisplay(prob)))}</div>
       `;
     } else {
       structureHTML = `
         <div class="answer-row"><b>1. จัดรูปให้ด้านขวาเป็น 0</b> (ลบ ${fmtSigned(prob.d)} ทั้งสองข้าง):</div>
-        <div class="answer-row" style="text-align:center;">${fmtFactoredDisplay(prob)}</div>
-        <div class="answer-row"><b>2. มองเห็นโครงสร้างข้างใน:</b> y\u2081 = ${fmtStandardAbs(prob.a1, prob.h1)}</div>
-        <div class="answer-row"><b>3. ขั้นกลาง:</b> ${fmtLinInside(prob.B, "y\u2081", prob.C)}</div>
+        <div class="answer-row" style="text-align:center;">${KT(plainMathToLatex(fmtFactoredDisplay(prob)))}</div>
+        <div class="answer-row"><b>2. มองเห็นโครงสร้างข้างใน:</b> ${KT(`y_1 = ${plainMathToLatex(fmtStandardAbs(prob.a1, prob.h1))}`)}</div>
+        <div class="answer-row"><b>3. ขั้นกลาง:</b> ${KT(plainMathToLatex(fmtLinInside(prob.B, "y_1", prob.C)))}</div>
       `;
     }
     return `
       ${structureHTML}
-      <div class="section-title">${prob.type === "sum" ? "2" : "4"}. หาจุดตัดแกน x (แก้ทีละท่อนเส้นตรง):</div>
+      <div class="section-title">${prob.type === "sum" ? "2" : "4"}. หาจุดตัดแกน <span class="math-var">x</span> (แก้ทีละท่อนเส้นตรง):</div>
       <div class="answer-row"><b>สมการเส้นตรงแต่ละช่วง:</b></div>
       ${fmtSegmentsList(prob.type === "sum" ? buildSegmentsSum(prob) : buildSegmentsNested(prob))}
-      <div class="answer-row">จุดตัดแกน x ที่พบ: ${roots.map(r => fmtRootLabel(r)).join(", ")}</div>
+      <div class="answer-row">จุดตัดแกน <span class="math-var">x</span> ที่พบ: ${KT(roots.map(rootToLatex).join(",\\;"))}</div>
       <div class="section-title">${prob.type === "sum" ? "3" : "5"}. กราฟและเส้นจำนวน (เครื่องหมายแต่ละซอง):</div>
     `;
   }
@@ -638,6 +691,7 @@
     exprEl.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "จัดรูปให้ด้านขวาเป็น 0 แล้วแก้อสมการ แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -647,15 +701,16 @@
     graphBox.innerHTML = buildGraphAndLine(current, roots);
     const sol = determineSolution(current, roots);
     answerCard.innerHTML = buildAnswerCardHTML(current) +
-      `<div class="solution-line">${fmtFactoredDisplay(current)} \u2192 x \u2208 ${fmtSolutionSet(sol)}</div>`;
+      `<div class="solution-line">${KT(plainMathToLatex(fmtFactoredDisplay(current)))}<br>${KT(`x \\in ${solutionSetLatex(sol)}`)}</div>`;
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); answerWrap.classList.add("swap");
     setTimeout(() => {
       current = generateProblem();
       typeBadge.textContent = TYPE_LABELS[current.type];
-      exprEl.innerHTML = fmtHiddenProblem(current);
+      exprEl.innerHTML = KT(plainMathToLatex(fmtHiddenProblem(current)));
       displayProblem();
       exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
     }, 150);
@@ -698,7 +753,7 @@
 
   current = generateProblem();
   typeBadge.textContent = TYPE_LABELS[current.type];
-  exprEl.innerHTML = fmtHiddenProblem(current);
+  exprEl.innerHTML = KT(plainMathToLatex(fmtHiddenProblem(current)));
   displayProblem();
 </script>
 </body>
