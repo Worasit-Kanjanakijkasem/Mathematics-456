@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>สุ่มโจทย์ผลรวม-ผลคูณตรีโกณมิติ</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
+  .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
+  .katex .msupsub { margin-left: 0.08em; }
+</style>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -254,8 +261,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -309,7 +316,20 @@
 
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
   function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
-  function fracHTML(num, den) { return `<span class="frac"><span class="num">${num}</span><span class="den">${den}</span></span>`; }
+  function KT(latex) {
+    try { return katex.renderToString(latex, { throwOnError: false }); }
+    catch (e) { return latex; }
+  }
+  // wrap in parentheses when the value being subtracted is negative or is a raw
+  // LaTeX fragment that already carries a leading minus — avoids a confusing
+  // "A - -B" or "X - -Y..." reading (same rule applied in the rectilinear-motion
+  // exercises; not actually triggered anywhere in THIS file's current generation,
+  // since every x,y,A,B here is constructed to stay positive, but kept for safety
+  // and consistency in case the generator is ever extended)
+  function parenIfNeg(val) {
+    if (typeof val === "number") return val < 0 ? `(${val})` : `${val}`;
+    return /^\s*-/.test(val) ? `(${val})` : val;
+  }
 
   // ---- Type 1: sum-to-product ----
   function genSumProd() {
@@ -322,25 +342,25 @@
     const A = (x + y) / 2, B = (x - y) / 2;
     const variant = choice(["sp", "sm", "cp", "cm"]); // sin+, sin-, cos+, cos-
     let problem, answer, formula, sub;
-    const given = `x=${x}\u00b0, y=${y}\u00b0`;
+    const given = KT(`x=${x}^\\circ,\\ y=${y}^\\circ`);
     if (variant === "sp") {
-      problem = `sin${x}\u00b0 + sin${y}\u00b0`;
-      answer = `2 sin${A}\u00b0 cos${B}\u00b0`;
-      formula = `sin x + sin y = 2 sinA cosB`;
+      problem = KT(`\\sin ${x}^\\circ + \\sin ${y}^\\circ`);
+      answer = KT(`2\\sin ${A}^\\circ \\cos ${B}^\\circ`);
+      formula = KT(`\\sin x + \\sin y = 2\\sin A\\cos B`);
     } else if (variant === "sm") {
-      problem = `sin${x}\u00b0 \u2212 sin${y}\u00b0`;
-      answer = `2 cos${A}\u00b0 sin${B}\u00b0`;
-      formula = `sin x \u2212 sin y = 2 cosA sinB`;
+      problem = KT(`\\sin ${x}^\\circ - \\sin ${y}^\\circ`);
+      answer = KT(`2\\cos ${A}^\\circ \\sin ${B}^\\circ`);
+      formula = KT(`\\sin x - \\sin y = 2\\cos A\\sin B`);
     } else if (variant === "cp") {
-      problem = `cos${x}\u00b0 + cos${y}\u00b0`;
-      answer = `2 cos${A}\u00b0 cos${B}\u00b0`;
-      formula = `cos x + cos y = 2 cosA cosB`;
+      problem = KT(`\\cos ${x}^\\circ + \\cos ${y}^\\circ`);
+      answer = KT(`2\\cos ${A}^\\circ \\cos ${B}^\\circ`);
+      formula = KT(`\\cos x + \\cos y = 2\\cos A\\cos B`);
     } else {
-      problem = `cos${x}\u00b0 \u2212 cos${y}\u00b0`;
-      answer = `\u22122 sin${A}\u00b0 sin${B}\u00b0`;
-      formula = `cos x \u2212 cos y = \u22122 sinA sinB`;
+      problem = KT(`\\cos ${x}^\\circ - \\cos ${y}^\\circ`);
+      answer = KT(`-2\\sin ${A}^\\circ \\sin ${B}^\\circ`);
+      formula = KT(`\\cos x - \\cos y = -2\\sin A\\sin B`);
     }
-    sub = `A+B=x, A\u2212B=y  \u2192  A=${A}\u00b0, B=${B}\u00b0`;
+    sub = KT(`A+B=x,\\ A-B=y \\;\\Rightarrow\\; A=${A}^\\circ,\\ B=${B}^\\circ`);
     return { type: "sumprod", problem, answer, formula, sub, given };
   }
 
@@ -351,31 +371,31 @@
     const x = A + B, y = A - B;
     const variant = choice(["sc", "cs", "cc", "ss"]);
     let problem, answer, formula, sub;
-    const given = `A=${A}\u00b0, B=${B}\u00b0`;
+    const given = KT(`A=${A}^\\circ,\\ B=${B}^\\circ`);
     if (variant === "sc") {
-      problem = `sin${A}\u00b0 \u00d7 cos${B}\u00b0`;
-      answer = fracHTML("1", "2") + `(sin${x}\u00b0 + sin${y}\u00b0)`;
-      formula = `sinA cosB = ` + fracHTML("1", "2") + `(sin x + sin y)`;
+      problem = KT(`\\sin ${A}^\\circ \\times \\cos ${B}^\\circ`);
+      answer = KT(`\\tfrac{1}{2}(\\sin ${x}^\\circ + \\sin ${y}^\\circ)`);
+      formula = KT(`\\sin A\\cos B = \\tfrac{1}{2}(\\sin x + \\sin y)`);
     } else if (variant === "cs") {
-      problem = `cos${A}\u00b0 \u00d7 sin${B}\u00b0`;
-      answer = fracHTML("1", "2") + `(sin${x}\u00b0 \u2212 sin${y}\u00b0)`;
-      formula = `cosA sinB = ` + fracHTML("1", "2") + `(sin x \u2212 sin y)`;
+      problem = KT(`\\cos ${A}^\\circ \\times \\sin ${B}^\\circ`);
+      answer = KT(`\\tfrac{1}{2}(\\sin ${x}^\\circ - \\sin ${y}^\\circ)`);
+      formula = KT(`\\cos A\\sin B = \\tfrac{1}{2}(\\sin x - \\sin y)`);
     } else if (variant === "cc") {
-      problem = `cos${A}\u00b0 \u00d7 cos${B}\u00b0`;
-      answer = fracHTML("1", "2") + `(cos${y}\u00b0 + cos${x}\u00b0)`;
-      formula = `cosA cosB = ` + fracHTML("1", "2") + `(cos y + cos x)`;
+      problem = KT(`\\cos ${A}^\\circ \\times \\cos ${B}^\\circ`);
+      answer = KT(`\\tfrac{1}{2}(\\cos ${y}^\\circ + \\cos ${x}^\\circ)`);
+      formula = KT(`\\cos A\\cos B = \\tfrac{1}{2}(\\cos y + \\cos x)`);
     } else {
-      problem = `sin${A}\u00b0 \u00d7 sin${B}\u00b0`;
-      answer = fracHTML("1", "2") + `(cos${y}\u00b0 \u2212 cos${x}\u00b0)`;
-      formula = `sinA sinB = ` + fracHTML("1", "2") + `(cos y \u2212 cos x)`;
+      problem = KT(`\\sin ${A}^\\circ \\times \\sin ${B}^\\circ`);
+      answer = KT(`\\tfrac{1}{2}(\\cos ${y}^\\circ - \\cos ${x}^\\circ)`);
+      formula = KT(`\\sin A\\sin B = \\tfrac{1}{2}(\\cos y - \\cos x)`);
     }
-    sub = `x=A+B=${x}\u00b0, y=A\u2212B=${y}\u00b0`;
+    sub = KT(`x=A+B=${x}^\\circ,\\ y=A-B=${y}^\\circ`);
     return { type: "prodsum", problem, answer, formula, sub, given };
   }
 
   // ---- Type 3: linear combination a sinx + b cosx = A sin(x+theta) ----
-  function fmtCoeffTerm(coef, varName, isFirst) {
-    const sign = coef < 0 ? "\u2212" : isFirst ? "" : "+";
+  function fmtCoeffTermLatex(coef, varName, isFirst) {
+    const sign = coef < 0 ? "-" : isFirst ? "" : "+";
     const abs = Math.abs(coef);
     const numStr = abs === 1 ? "" : `${abs}`;
     return isFirst ? `${sign}${numStr}${varName}` : ` ${sign} ${numStr}${varName}`;
@@ -387,14 +407,25 @@
     const Asq = a * a + b * b;
     const Aexact = Math.sqrt(Asq);
     const isPerfectSquare = Number.isInteger(Aexact);
-    const Astr = isPerfectSquare ? `${Aexact}` : `\u221a${Asq}`;
+    const AstrLatex = isPerfectSquare ? `${Aexact}` : `\\sqrt{${Asq}}`;
     const acosVal = (Math.acos(a / Aexact) * 180) / Math.PI;
     const sign = b > 0 ? 1 : -1;
     const thetaDeg = sign * acosVal;
-    const problem = fmtCoeffTerm(a, "sinx", true) + fmtCoeffTerm(b, "cosx", false);
-    const answer = `${Astr} sin(x + \u03b8)`;
-    const thetaFormula = `\u03b8 = ${sign < 0 ? "\u2212" : ""}arccos(${a}/${Astr})  (เครื่องหมายตามเครื่องหมายของ b=${b})`;
-    const sub = `A=\u221a(${a}\u00b2+${b}\u00b2)=${Astr}${isPerfectSquare ? "" : ` \u2248 ${Aexact.toFixed(2)}`}     ${thetaFormula} \u2248 ${thetaDeg.toFixed(2)}\u00b0`;
+    const problem = KT(fmtCoeffTermLatex(a, "\\sin x", true) + fmtCoeffTermLatex(b, "\\cos x", false));
+    const answer = KT(`${AstrLatex}\\sin(x+\\theta)`);
+    // theta's own formula: arccos(a/A) — a can be negative, but this is a fraction
+    // NUMERATOR carrying its own sign, not a subtraction of a signed quantity, so
+    // the parenthesizing rule doesn't apply here; LaTeX's \frac already displays a
+    // negative numerator clearly on its own line, no extra parens needed
+    const thetaFormula = `\\theta = ${sign < 0 ? "-" : ""}\\arccos\\!\\left(\\dfrac{${a}}{${AstrLatex}}\\right)`;
+    // a^2, b^2: a or b CAN be negative here, and writing "...+${b}^2" directly when
+    // b<0 produces a literal "+ -2^2" in the source — a "+" sitting right next to a
+    // "-" is exactly the confusing-adjacent-signs case the parenthesizing rule is
+    // for, so each squared term gets wrapped whenever its own base is negative
+    const aSqTerm = a < 0 ? `(${a})^2` : `${a}^2`;
+    const bSqTerm = b < 0 ? `(${b})^2` : `${b}^2`;
+    const sub = KT(`A=\\sqrt{${aSqTerm}+${bSqTerm}}=${AstrLatex}${isPerfectSquare ? "" : ` \\approx ${Aexact.toFixed(2)}`}`)
+      + `<br>` + KT(`${thetaFormula} \\;(\\text{เครื่องหมายตามเครื่องหมายของ } b=${b}) \\approx ${thetaDeg.toFixed(2)}^\\circ`);
     return { type: "lincomb", problem, answer, sub };
   }
 
@@ -430,17 +461,19 @@
     exprEl.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "แปลงรูปให้ถูกต้อง แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
     answerWrap.style.display = "";
-    answerGiven.textContent = current.given ? `\u0e01\u0e33\u0e2b\u0e19\u0e14 ${current.given}` : "";
+    answerGiven.innerHTML = current.given ? `\u0e01\u0e33\u0e2b\u0e19\u0e14 ${current.given}` : "";
     answerGiven.style.display = current.given ? "" : "none";
     answerLine.innerHTML = current.answer;
     answerFormula.innerHTML = current.formula || "";
     answerFormula.style.display = current.formula ? "" : "none";
-    answerSub.textContent = current.sub;
+    answerSub.innerHTML = current.sub;
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
 
   function showNext() {
@@ -448,7 +481,7 @@
     setTimeout(() => {
       current = generateProblem();
       typeBadge.textContent = TYPE_LABELS[current.type] || "";
-      exprEl.textContent = current.problem;
+      exprEl.innerHTML = current.problem;
       showingAnswer = false;
       displayProblem();
       exprEl.classList.remove("swap"); answerWrap.classList.remove("swap");
