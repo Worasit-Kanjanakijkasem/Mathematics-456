@@ -688,7 +688,7 @@
     graphBox.innerHTML = buildGraphAndLine(current);
     answerCard.innerHTML = buildAnswerCardHTML(current);
     const sol = determineSolution(current);
-    answerCard.innerHTML += `<div class="solution-line">${KT(`${factoredLatex(current)} \\;\\Rightarrow\\; x \\in ${solutionSetLatex(current, sol)}`)}</div>`;
+    answerCard.innerHTML += `<div class="solution-line">${KT(factoredLatex(current))}<br>${KT(`x \\in ${solutionSetLatex(current, sol)}`)}</div>`;
     promptEl.textContent = "นี่คือเฉลย";
     toggleBtn.textContent = "ดูโจทย์";
   }
