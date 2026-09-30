@@ -10,6 +10,16 @@
   .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
   .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
   .katex .msupsub { margin-left: 0.08em; }
+
+  /* Shared mathematics typography fallback for non-KaTeX text */
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+  .math-unit {
+    font-family: "Times New Roman", Times, serif;
+    font-style: normal;
+  }
 </style>
 <style>
   :root {
@@ -110,20 +120,6 @@
     font-weight: 700;
     color: var(--ink);
   }
-  .answer-formula .frac { margin: 0 0.12em; }
-
-  .frac {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    vertical-align: middle;
-    margin: 0 0.1em;
-    line-height: 1.05;
-  }
-  .frac .num, .frac .den { display: block; padding: 0 0.1em; }
-  .frac .num { border-bottom: 0.06em solid currentColor; padding-bottom: 0.05em; }
-  .frac .den { padding-top: 0.05em; }
-
   .prompt {
     margin-top: 18px;
     font-size: clamp(13px, 1.8vw, 18px);
@@ -279,19 +275,19 @@
 
       <div class="field-group">
         <div class="toggle-row">
-          <span>1. ผลรวม (sinA&plusmn;sinB, cosA&plusmn;cosB) &rarr; ผลคูณ</span>
+          <span>1. ผลรวม (<span class="math-var">sin A</span>&plusmn;<span class="math-var">sin B</span>, <span class="math-var">cos A</span>&plusmn;<span class="math-var">cos B</span>) &rarr; ผลคูณ</span>
           <label class="switch"><input type="checkbox" id="typeSumProd" checked><span class="slider-track"></span></label>
         </div>
         <div class="toggle-row">
-          <span>2. ผลคูณ (sinAcosB, cosAcosB, ...) &rarr; ผลรวม</span>
+          <span>2. ผลคูณ (<span class="math-var">sin A cos B</span>, <span class="math-var">cos A cos B</span>, ...) &rarr; ผลรวม</span>
           <label class="switch"><input type="checkbox" id="typeProdSum" checked><span class="slider-track"></span></label>
         </div>
         <div class="toggle-row">
-          <span>3. asinx+bcosx = Asin(x+&theta;)</span>
+          <span>3. <span class="math-var">a sin x + b cos x = A sin</span>(<span class="math-var">x</span>+<span class="math-var">&theta;</span>)</span>
           <label class="switch"><input type="checkbox" id="typeLinComb" checked><span class="slider-track"></span></label>
         </div>
         <div class="subfield-row">
-          <span class="subfield-label">ค่าสัมบูรณ์สูงสุดของสัมประสิทธิ์ a, b (แบบที่ 3)</span>
+          <span class="subfield-label">ค่าสัมบูรณ์สูงสุดของสัมประสิทธิ์ <span class="math-var">a</span>, <span class="math-var">b</span> (แบบที่ 3)</span>
           <input type="number" id="linCombMax" min="1" step="1">
         </div>
       </div>
@@ -374,20 +370,20 @@
     const given = KT(`A=${A}^\\circ,\\ B=${B}^\\circ`);
     if (variant === "sc") {
       problem = KT(`\\sin ${A}^\\circ \\times \\cos ${B}^\\circ`);
-      answer = KT(`\\tfrac{1}{2}(\\sin ${x}^\\circ + \\sin ${y}^\\circ)`);
-      formula = KT(`\\sin A\\cos B = \\tfrac{1}{2}(\\sin x + \\sin y)`);
+      answer = KT(`\\frac{1}{2}(\\sin ${x}^\\circ + \\sin ${y}^\\circ)`);
+      formula = KT(`\\sin A\\cos B = \\frac{1}{2}(\\sin x + \\sin y)`);
     } else if (variant === "cs") {
       problem = KT(`\\cos ${A}^\\circ \\times \\sin ${B}^\\circ`);
-      answer = KT(`\\tfrac{1}{2}(\\sin ${x}^\\circ - \\sin ${y}^\\circ)`);
-      formula = KT(`\\cos A\\sin B = \\tfrac{1}{2}(\\sin x - \\sin y)`);
+      answer = KT(`\\frac{1}{2}(\\sin ${x}^\\circ - \\sin ${y}^\\circ)`);
+      formula = KT(`\\cos A\\sin B = \\frac{1}{2}(\\sin x - \\sin y)`);
     } else if (variant === "cc") {
       problem = KT(`\\cos ${A}^\\circ \\times \\cos ${B}^\\circ`);
-      answer = KT(`\\tfrac{1}{2}(\\cos ${y}^\\circ + \\cos ${x}^\\circ)`);
-      formula = KT(`\\cos A\\cos B = \\tfrac{1}{2}(\\cos y + \\cos x)`);
+      answer = KT(`\\frac{1}{2}(\\cos ${y}^\\circ + \\cos ${x}^\\circ)`);
+      formula = KT(`\\cos A\\cos B = \\frac{1}{2}(\\cos y + \\cos x)`);
     } else {
       problem = KT(`\\sin ${A}^\\circ \\times \\sin ${B}^\\circ`);
-      answer = KT(`\\tfrac{1}{2}(\\cos ${y}^\\circ - \\cos ${x}^\\circ)`);
-      formula = KT(`\\sin A\\sin B = \\tfrac{1}{2}(\\cos y - \\cos x)`);
+      answer = KT(`\\frac{1}{2}(\\cos ${y}^\\circ - \\cos ${x}^\\circ)`);
+      formula = KT(`\\sin A\\sin B = \\frac{1}{2}(\\cos y - \\cos x)`);
     }
     sub = KT(`x=A+B=${x}^\\circ,\\ y=A-B=${y}^\\circ`);
     return { type: "prodsum", problem, answer, formula, sub, given };
@@ -425,7 +421,7 @@
     const aSqTerm = a < 0 ? `(${a})^2` : `${a}^2`;
     const bSqTerm = b < 0 ? `(${b})^2` : `${b}^2`;
     const sub = KT(`A=\\sqrt{${aSqTerm}+${bSqTerm}}=${AstrLatex}${isPerfectSquare ? "" : ` \\approx ${Aexact.toFixed(2)}`}`)
-      + `<br>` + KT(`${thetaFormula} \\;(\\text{เครื่องหมายตามเครื่องหมายของ } b=${b}) \\approx ${thetaDeg.toFixed(2)}^\\circ`);
+      + `<br>` + KT(`${thetaFormula}`) + ` (เครื่องหมายตามเครื่องหมายของ ${KT(`b=${b}`)}) ` + KT(`\\approx ${thetaDeg.toFixed(2)}^\\circ`);
     return { type: "lincomb", problem, answer, sub };
   }
 
