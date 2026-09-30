@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>กราฟ sine และ cosine</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit { font-family: "Times New Roman", Georgia, "Cambria", serif !important; }
+  .katex .katex-sizing.reset-size6.size3.mtight { font-size: 0.78em !important; }
+  .katex .msupsub { margin-left: 0.08em; }
+</style>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -188,8 +195,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -237,9 +244,15 @@
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
   function choice(arr) { return arr[randInt(0, arr.length - 1)]; }
   function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcd(b, a % b); }
+  function KT(latex) {
+    try { return katex.renderToString(latex, { throwOnError: false }); }
+    catch (e) { return latex; }
+  }
 
   /* =========================================================
-     2. PI-FRACTION FORMATTING (exact p/q multiples of pi)
+     2. PI-FRACTION FORMATTING (exact p/q multiples of pi) — now
+     builds a raw LaTeX fragment (for embedding in a larger KT()
+     call) instead of hand-built HTML/<span> fractions
      ========================================================= */
   function piFrac(p, q) {
     if (p === 0) return { p: 0, q: 1 };
@@ -248,15 +261,16 @@
     if (qq < 0) { pp = -pp; qq = -qq; }
     return { p: pp, q: qq };
   }
-  function fmtPi(frac, { forceParen = false } = {}) {
+  function fmtPiLatex(frac) {
     // frac represents (p/q)*pi
     if (frac.p === 0) return "0";
-    const sign = frac.p < 0 ? "\u2212" : "";
+    const sign = frac.p < 0 ? "-" : "";
     const ap = Math.abs(frac.p);
     const coeffStr = ap === 1 ? "" : `${ap}`;
-    const body = frac.q === 1 ? `${coeffStr}\u03c0` : `<span class="frac"><span class="num">${coeffStr}\u03c0</span><span class="den">${frac.q}</span></span>`;
+    const body = frac.q === 1 ? `${coeffStr}\\pi` : `\\dfrac{${coeffStr}\\pi}{${frac.q}}`;
     return `${sign}${body}`;
   }
+  function fmtPi(frac, opts) { return KT(fmtPiLatex(frac)); }
   function fmtPiVal(frac) { return frac.p * Math.PI / frac.q; }
 
   /* =========================================================
@@ -293,61 +307,75 @@
 
   function fmtB(b) {
     if (b.q === 1) return `${b.p}`;
-    return `<span class="frac"><span class="num">${b.p}</span><span class="den">${b.q}</span></span>`;
+    return KT(`\\dfrac{${b.p}}{${b.q}}`);
   }
+  function fmtBLatex(b) { return b.q === 1 ? `${b.p}` : `\\dfrac{${b.p}}{${b.q}}`; }
   function fmtBVal(b) { return b.p / b.q; }
 
   /* =========================================================
      4. FORMATTING
      ========================================================= */
-  function fmtAmpCoeff(a) {
+  function fmtAmpCoeffLatex(a) {
     if (a === 1) return "";
-    if (a === -1) return "\u2212";
-    return a < 0 ? `\u2212${Math.abs(a)}` : `${a}`;
+    if (a === -1) return "-";
+    return a < 0 ? `-${Math.abs(a)}` : `${a}`;
   }
-  function fmtNumSigned(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
-  function fmtInnerX(h) {
+  function fmtAmpCoeff(a) { return KT(fmtAmpCoeffLatex(a)); }
+  function fmtNumSigned(n) { return KT(n < 0 ? `-${Math.abs(n)}` : `${n}`); }
+  function fmtNumSignedPlain(n) { return n < 0 ? `\u2212${Math.abs(n)}` : `${n}`; }
+  function fmtInnerXLatex(h) {
     if (h.p === 0) return "x";
-    const hStr = fmtPi(h);
-    return h.p > 0 ? `x \u2212 ${hStr}` : `x + ${fmtPi({ p: -h.p, q: h.q })}`;
+    const hStr = fmtPiLatex(h);
+    // h.p>0 subtracts a POSITIVE pi-fraction from x — hStr here never itself carries
+    // a leading minus (guaranteed since h.p>0 in this branch), so "x - hStr" never
+    // produces an adjacent "-  -"; the h.p<0 branch below explicitly negates p first
+    // (making the piece positive) before adding, for the same reason
+    return h.p > 0 ? `x - ${hStr}` : `x + ${fmtPiLatex({ p: -h.p, q: h.q })}`;
   }
-  function fmtOuterK(k) {
+  function fmtInnerX(h) { return KT(fmtInnerXLatex(h)); }
+  function fmtOuterKLatex(k) {
     if (k === 0) return "";
-    return k > 0 ? ` + ${k}` : ` \u2212 ${Math.abs(k)}`;
+    return k > 0 ? ` + ${k}` : ` - ${Math.abs(k)}`;
   }
-  function fmtBX(b) {
+  function fmtOuterK(k) { return fmtOuterKLatex(k); }
+  function fmtBXLatex(b) {
     // formats the "b*x" part alone: "x" when b=1, "2x" for integer b, or a stacked
     // fraction "x/q" when b=1/q (the only fractional case among B_CHOICES, where the
     // numerator is always 1).
     if (b.p === 1 && b.q === 1) return "x";
     if (b.q === 1) return `${b.p}x`;
-    return `<span class="frac"><span class="num">x</span><span class="den">${b.q}</span></span>`;
+    return `\\dfrac{x}{${b.q}}`;
   }
+  function fmtBX(b) { return KT(fmtBXLatex(b)); }
   function computeC(b, h) {
     // c = -b*h, exact as a pi-fraction (verified algebraically and numerically
     // beforehand): b=(bp/bq), h=(hp/hq)*pi -> c = -(bp*hp)/(bq*hq) * pi
     return piFrac(-b.p * h.p, b.q * h.q);
   }
-  function fmtSignedPi(frac) {
+  function fmtSignedPiLatex(frac) {
     if (frac.p === 0) return "";
-    return frac.p > 0 ? ` + ${fmtPi(frac)}` : ` \u2212 ${fmtPi({ p: -frac.p, q: frac.q })}`;
+    // same reasoning as fmtInnerXLatex: the piece being added/subtracted is always
+    // built from a POSITIVE p (negated first when frac.p<0), so it never itself
+    // starts with "-", and no "+ -" / "- -" adjacency can occur here
+    return frac.p > 0 ? ` + ${fmtPiLatex(frac)}` : ` - ${fmtPiLatex({ p: -frac.p, q: frac.q })}`;
   }
+  function fmtSignedPi(frac) { return fmtSignedPiLatex(frac); }
   function fmtProblem(prob) {
     // the problem is shown already multiplied out (b*(x-h) expanded to bx+c) so the
     // student must do the factoring themselves to read off the phase shift, matching
     // the compact form actually seen on exams.
-    const fnName = prob.fn === "sin" ? "sin" : "cos";
+    const fnName = prob.fn === "sin" ? "\\sin" : "\\cos";
     const c = computeC(prob.b, prob.h);
-    const argument = fmtBX(prob.b) + fmtSignedPi(c);
-    return `y = ${fmtAmpCoeff(prob.a)}${fnName}(${argument})${fmtOuterK(prob.k)}`;
+    const argument = fmtBXLatex(prob.b) + fmtSignedPiLatex(c);
+    return KT(`y = ${fmtAmpCoeffLatex(prob.a)}${fnName}(${argument})${fmtOuterKLatex(prob.k)}`);
   }
   function fmtFactoredForm(prob) {
     // the y=a*sin(b(x-h))+k label used to annotate the answer's graph
-    const fnName = prob.fn === "sin" ? "sin" : "cos";
+    const fnName = prob.fn === "sin" ? "\\sin" : "\\cos";
     const bVal = fmtBVal(prob.b);
-    const inner = fmtInnerX(prob.h);
-    const argument = bVal === 1 ? inner : (prob.h.p === 0 ? `${fmtB(prob.b)}x` : `${fmtB(prob.b)}(${inner})`);
-    return `y = ${fmtAmpCoeff(prob.a)}${fnName}(${argument})${fmtOuterK(prob.k)}`;
+    const inner = fmtInnerXLatex(prob.h);
+    const argument = bVal === 1 ? inner : (prob.h.p === 0 ? `${fmtBLatex(prob.b)}x` : `${fmtBLatex(prob.b)}(${inner})`);
+    return KT(`y = ${fmtAmpCoeffLatex(prob.a)}${fnName}(${argument})${fmtOuterKLatex(prob.k)}`);
   }
 
   function buildQuestionsHTML() {
@@ -363,11 +391,11 @@
     const periodStr = fmtPi(prob.period);
     const phaseStr = prob.h.p === 0 ? "0 (ไม่เลื่อน)" : fmtPi(prob.h);
     return `
-      <div class="answer-row"><b>1. Amplitude:</b> |a| = ${amp}</div>
+      <div class="answer-row"><b>1. Amplitude:</b> ${KT("|a|")} = ${amp}</div>
       <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>Period:</b> ${periodStr}</div>
       <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เฟสชิฟต์ (h):</b> ${phaseStr}</div>
       <div class="answer-row">&nbsp;&nbsp;&nbsp;<b>เลื่อนแนวตั้ง (k):</b> ${fmtNumSigned(prob.k)}</div>
-      <div class="answer-row"><b>2. เส้นกึ่งกลาง (Midline):</b> y = ${fmtNumSigned(prob.k)}</div>
+      <div class="answer-row"><b>2. เส้นกึ่งกลาง (Midline):</b> ${KT(`y = ${prob.k < 0 ? "-" + Math.abs(prob.k) : prob.k}`)}</div>
       <div class="answer-row"><b>3. กราฟ:</b> ดูรูปด้านบน (เส้นประคือเส้นกึ่งกลาง)</div>
     `;
   }
@@ -449,7 +477,7 @@
     const curveNearRight = Math.abs(evalFn(prob, xHi - 0.3) - prob.k) < amp * 0.35;
     const midLabelX = curveNearRight ? toPx(xLo) + 4 : toPx(xHi) - 4;
     const midLabelAnchor = curveNearRight ? "start" : "end";
-    svg += `<text x="${midLabelX.toFixed(1)}" y="${(toPy(prob.k) - 6).toFixed(1)}" font-size="12" fill="${MID_COLOR}" font-weight="700" text-anchor="${midLabelAnchor}" font-family="Calibri, sans-serif">y = ${fmtNumSigned(prob.k)}</text>`;
+    svg += `<text x="${midLabelX.toFixed(1)}" y="${(toPy(prob.k) - 6).toFixed(1)}" font-size="12" fill="${MID_COLOR}" font-weight="700" text-anchor="${midLabelAnchor}" font-family="Calibri, sans-serif">y = ${fmtNumSignedPlain(prob.k)}</text>`;
 
     // curve
     const steps = 200;
@@ -494,6 +522,7 @@
     questionsList.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "วิเคราะห์กราฟ แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -502,6 +531,7 @@
     graphBox.innerHTML = buildGraph(current);
     answerCard.innerHTML = fmtAnswerCard(current);
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
