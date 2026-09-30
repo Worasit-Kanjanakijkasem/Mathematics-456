@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>การหารสังเคราะห์และการแยกตัวประกอบ</title>
+<title>การแยกตัวประกอบด้วยการหารสังเคราะห์</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   :root {
     --navy: #2F3C7E;
@@ -29,6 +31,19 @@
     user-select: none;
     position: relative;
   }
+  /* Mathematics typography */
+  .katex .mathnormal, .katex .mathdefault, .katex .mathit {
+    font-family: "Times New Roman", Times, serif !important;
+  }
+  .math-var {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+  }
+  .math-unit {
+    font-family: "Times New Roman", Times, serif;
+    font-style: normal;
+  }
+
   .blob { position: absolute; border-radius: 50%; pointer-events: none; }
   .blob-1 { width: 38vmax; height: 38vmax; background: var(--coral); opacity: 0.10; top: -14vmax; right: -12vmax; }
   .blob-2 { width: 26vmax; height: 26vmax; background: var(--gold); opacity: 0.08; bottom: -10vmax; left: -8vmax; }
@@ -58,7 +73,7 @@
   }
 
   .expr {
-    font-family: "Cambria", "Georgia", serif;
+    font-family: "Times New Roman", Times, serif;
     font-size: clamp(18px, 3.4vw, 30px);
     font-weight: 700;
     text-align: center;
@@ -93,7 +108,7 @@
   .synth-section-title { font-size: clamp(13px, 2vw, 16px); font-weight: 700; color: var(--gold); margin: 14px 0 8px; }
   .synth-table-wrap { overflow-x: auto; margin-bottom: 12px; }
   .synth-table {
-    border-collapse: collapse; font-family: "Consolas", "Cambria", monospace; font-size: clamp(13px, 2vw, 16px);
+    border-collapse: collapse; font-family: "Times New Roman", Times, serif; font-size: clamp(13px, 2vw, 16px);
     margin: 0 auto;
   }
   .synth-table td { padding: 4px 10px; text-align: center; min-width: 34px; }
@@ -110,7 +125,7 @@
   .frac .den { padding-top: 0.03em; }
 
   .factored-line {
-    font-family: "Cambria", "Georgia", serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
+    font-family: "Times New Roman", Times, serif; font-size: clamp(15px, 2.4vw, 20px); font-weight: 700;
     text-align: center; color: var(--gold); margin-top: 10px; line-height: 1.6;
   }
 
@@ -188,7 +203,7 @@
   <div class="blob blob-2"></div>
   <button class="gear-btn" id="gearBtn" aria-label="ตั้งค่า">⚙️</button>
 
-  <div class="eyebrow">การหารสังเคราะห์และการแยกตัวประกอบ</div>
+  <div class="eyebrow">การแยกตัวประกอบด้วยการหารสังเคราะห์</div>
 
   <div class="stage">
     <div class="expr" id="exprEl">…</div>
@@ -201,8 +216,8 @@
   </div>
 
   <div class="controls">
-    <button class="btn-next" id="nextBtn">สุ่มข้อถัดไป ⚡</button>
-    <button class="btn-toggle" id="toggleBtn">โจทย์ / เฉลย</button>
+    <button class="btn-next" id="nextBtn">ข้อต่อไป</button>
+    <button class="btn-toggle" id="toggleBtn">ดูเฉลย</button>
     <button class="btn-end" id="endBtn">จบ</button>
   </div>
 
@@ -240,6 +255,57 @@
   </div>
 
 <script>
+  function KT(tex) {
+    if (window.katex) return katex.renderToString(tex, { throwOnError: false });
+    return tex;
+  }
+
+  function polynomialToLatex(coeffs) {
+    const n = coeffs.length - 1;
+    let parts = [];
+    for (let i = 0; i <= n; i++) {
+      const c = coeffs[i];
+      if (c === 0) continue;
+      const power = n - i;
+      const ac = Math.abs(c);
+      let core = "";
+      if (power === 0) core = `${ac}`;
+      else if (power === 1) core = `${ac === 1 ? "" : ac}x`;
+      else core = `${ac === 1 ? "" : ac}x^{${power}}`;
+      if (!parts.length) parts.push(c < 0 ? `-${core}` : core);
+      else parts.push(c < 0 ? `- ${core}` : `+ ${core}`);
+    }
+    return parts.length ? parts.join(" ") : "0";
+  }
+
+  function polynomialEquationLatex(coeffs) {
+    return `f(x) = ${polynomialToLatex(coeffs)}`;
+  }
+
+  function factorToLatex(r) {
+    if (r === 0) return "x";
+    return r > 0 ? `(x-${r})` : `(x+${Math.abs(r)})`;
+  }
+
+  function factoredFormLatex(prob) {
+    const counts = {};
+    for (const r of prob.intRoots) counts[r] = (counts[r] || 0) + 1;
+    const parts = [];
+    for (const r of Object.keys(counts).map(Number).sort((a,b) => a-b)) {
+      const base = factorToLatex(r);
+      parts.push(counts[r] === 1 ? base : `${base}^{${counts[r]}}`);
+    }
+    if (prob.fracFactor) {
+      const {q,p} = prob.fracFactor;
+      const sign = p >= 0 ? "-" : "+";
+      parts.push(`(${q}x${sign}${Math.abs(p)})`);
+    }
+    if (prob.hasQuad) {
+      parts.push(`(${polynomialToLatex(prob.quad)})`);
+    }
+    return `f(x) = ${parts.join("")}`;
+  }
+
   /* =========================================================
      1. CONFIG
      ========================================================= */
@@ -437,8 +503,8 @@
     return { html, finalRemaining: current };
   }
   function fmtDivisorLabel(step) {
-    if (!step.isFrac) return `x = ${fmtSigned(step.r)}`;
-    return `x = ${fracHTMLSynth(step.p, step.q)}`;
+    if (!step.isFrac) return `<span class="math-var">x</span> = ${fmtSigned(step.r)}`;
+    return `<span class="math-var">x</span> = ${fracHTMLSynth(step.p, step.q)}`;
   }
   function fracHTMLSynth(p, q) {
     const sign = p < 0 ? "\u2212" : "";
@@ -500,7 +566,7 @@
       const step = prob.steps.find(s => s.display === r);
       const label = step.isFrac ? `${step.p}/${step.q}` : `${step.r}`;
       svg += `<circle cx="${toPx(r).toFixed(1)}" cy="${toPy(0).toFixed(1)}" r="4" fill="${DOT_COLOR}" stroke="#232D63" stroke-width="1"/>`;
-      svg += `<text x="${toPx(r).toFixed(1)}" y="${(toPy(0) + 16).toFixed(1)}" font-size="11" fill="${DOT_COLOR}" text-anchor="middle" font-family="Calibri, sans-serif">${label}</text>`;
+      svg += `<text x="${toPx(r).toFixed(1)}" y="${(toPy(0) + 16).toFixed(1)}" font-size="11" fill="${DOT_COLOR}" text-anchor="middle" font-family="Times New Roman, Times, serif" font-style="normal">${label}</text>`;
     }
     svg += "</svg>";
     return svg;
@@ -534,12 +600,12 @@
   function buildAnswerCardHTML(prob) {
     const { html: synthHTML } = buildAllSynthSteps(prob);
     return `
-      <div class="answer-row"><b>1. กราฟและจุดตัดแกน x:</b> ดูรูปด้านบน</div>
+      <div class="answer-row"><b>1. กราฟและจุดตัดแกน <span class="math-var">x</span>:</b> ดูรูปด้านบน</div>
       <div class="synth-section-title">2. การหารสังเคราะห์ทีละขั้น:</div>
       ${synthHTML}
       <div class="synth-section-title">3. สรุปการแยกตัวประกอบ:</div>
-      <div class="factored-line">${fmtPolynomial(prob.poly)}</div>
-      <div class="factored-line">${fmtFactoredForm(prob)}</div>
+      <div class="factored-line">${KT(polynomialEquationLatex(prob.poly))}</div>
+      <div class="factored-line">${KT(factoredFormLatex(prob))}</div>
     `;
   }
 
@@ -548,6 +614,7 @@
     questionsList.style.display = "";
     answerWrap.style.display = "none";
     promptEl.textContent = "แยกตัวประกอบให้ได้มากที่สุด แล้วกดดูเฉลย";
+    toggleBtn.textContent = "ดูเฉลย";
   }
   function displayAnswer() {
     exprEl.style.display = "none";
@@ -556,13 +623,14 @@
     graphBox.innerHTML = buildGraph(current);
     answerCard.innerHTML = buildAnswerCardHTML(current);
     promptEl.textContent = "นี่คือเฉลย";
+    toggleBtn.textContent = "ดูโจทย์";
   }
   function showNext() {
     exprEl.classList.add("swap"); questionsList.classList.add("swap"); answerWrap.classList.add("swap");
     setTimeout(() => {
       current = generateProblem();
-      exprEl.innerHTML = fmtPolynomial(current.poly);
-      questionsList.innerHTML = "จงแยกตัวประกอบของ f(x) ให้ได้มากที่สุด โดยใช้การหารสังเคราะห์";
+      exprEl.innerHTML = KT(polynomialEquationLatex(current.poly));
+      questionsList.innerHTML = `จงแยกตัวประกอบของ ${KT(`f(x)`)} ให้ได้มากที่สุด โดยใช้การหารสังเคราะห์`;
       displayProblem();
       exprEl.classList.remove("swap"); questionsList.classList.remove("swap"); answerWrap.classList.remove("swap");
     }, 150);
@@ -606,8 +674,8 @@
   });
 
   current = generateProblem();
-  exprEl.innerHTML = fmtPolynomial(current.poly);
-  questionsList.innerHTML = "จงแยกตัวประกอบของ f(x) ให้ได้มากที่สุด โดยใช้การหารสังเคราะห์";
+  exprEl.innerHTML = KT(polynomialEquationLatex(current.poly));
+  questionsList.innerHTML = `จงแยกตัวประกอบของ ${KT(`f(x)`)} ให้ได้มากที่สุด โดยใช้การหารสังเคราะห์`;
   displayProblem();
 </script>
 </body>
